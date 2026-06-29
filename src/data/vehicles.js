@@ -12,8 +12,8 @@ export const initialVehicles = [
     category: 'Sedan Premium',
     color: 'Preto Safira',
     stock: 1,
-    image: '',
-    description: 'Sedan premium com acabamento esportivo, motor turbo, câmbio automático e excelente conforto para uso urbano e viagens.'
+    image: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=800&q=80',
+    description: 'Sedan premium com acabamento esportivo M Sport, motor turbo de 184 cv, câmbio automático de 8 velocidades e excelente conforto para uso urbano e viagens longas. Interior com bancos de couro, painel digital e sistema iDrive.'
   },
   {
     id: '2',
@@ -27,9 +27,9 @@ export const initialVehicles = [
     fuel: 'Flex',
     category: 'Sedan',
     color: 'Prata',
-    stock: 1,
-    image: '',
-    description: 'Veículo reconhecido pela confiabilidade, conforto, baixa manutenção e excelente liquidez no mercado.'
+    stock: 2,
+    image: 'https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=800&q=80',
+    description: 'Veículo reconhecido pela confiabilidade, conforto, baixa manutenção e excelente liquidez no mercado. Motor 2.0 flex de 177 cv com câmbio CVT suave e econômico.'
   },
   {
     id: '3',
@@ -39,13 +39,13 @@ export const initialVehicles = [
     year: 2020,
     price: 159900,
     km: 50000,
-    transmission: 'Automático',
+    transmission: 'Automático S-tronic',
     fuel: 'Gasolina',
     category: 'Sedan Premium',
-    color: 'Branco',
+    color: 'Branco Glacier',
     stock: 1,
-    image: '',
-    description: 'Design sofisticado, tecnologia embarcada, ótima dirigibilidade e acabamento interno de alto padrão.'
+    image: 'https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=800&q=80',
+    description: 'Design sofisticado com tecnologia MMI embarcada, Virtual Cockpit digital, ótima dirigibilidade e acabamento interno de alto padrão. Motor TFSI 1.4 turbo de 150 cv.'
   },
   {
     id: '4',
@@ -60,8 +60,8 @@ export const initialVehicles = [
     category: 'SUV',
     color: 'Cinza Granite',
     stock: 1,
-    image: '',
-    description: 'SUV completo, confortável, tecnológico e ideal para família, com excelente posição de dirigir.'
+    image: 'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=800&q=80',
+    description: 'SUV completo, confortável e tecnológico. Ideal para família com tração 4x4, central multimídia UConnect 10", assistência de direção e câmera 360°.'
   },
   {
     id: '5',
@@ -76,8 +76,8 @@ export const initialVehicles = [
     category: 'Sedan',
     color: 'Azul Cósmico',
     stock: 1,
-    image: '',
-    description: 'Sedan com motor turbo, ótimo desempenho, conforto e visual esportivo.'
+    image: 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800&q=80',
+    description: 'Sedan com motor turbo 1.5 de 173 cv, visual esportivo, Honda Sensing com assistente de manutenção de faixa, frenagem automática e controle de cruzeiro adaptativo.'
   },
   {
     id: '6',
@@ -92,7 +92,41 @@ export const initialVehicles = [
     category: 'Picape',
     color: 'Branco Pérola',
     stock: 1,
-    image: '',
-    description: 'Picape robusta para trabalho e lazer, com alto desempenho, confiabilidade e conforto.'
+    image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
+    description: 'Picape robusta para trabalho e lazer com tração 4x4, motor diesel 2.8 de 204 cv, suspensão reforçada e central multimídia Toyota Play 9". Alta confiabilidade e liquidez.'
+  },
+  {
+    id: '7',
+    name: 'Mercedes-Benz GLC 300',
+    brand: 'Mercedes-Benz',
+    model: 'GLC 300',
+    year: 2021,
+    price: 349900,
+    km: 28000,
+    transmission: 'Automático 9G-Tronic',
+    fuel: 'Gasolina',
+    category: 'SUV Premium',
+    color: 'Cinza Selênio',
+    stock: 1,
+    image: 'https://images.unsplash.com/photo-1618843479619-f3d0d81e4d10?w=800&q=80',
+    description: 'SUV premium com motor 2.0 turbo de 258 cv, tração 4Matic, interior com MBUX touchscreen 10.25", assistentes de direção avançados e acabamento de luxo.'
+  },
+  {
+    id: '8',
+    name: 'Volkswagen Golf GTI',
+    brand: 'Volkswagen',
+    model: 'Golf GTI',
+    year: 2023,
+    price: 219900,
+    km: 12000,
+    transmission: 'Automático DSG',
+    fuel: 'Gasolina',
+    category: 'Hatch Premium',
+    color: 'Vermelho Tornado',
+    stock: 1,
+    image: 'https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?w=800&q=80',
+    description: 'Hatch esportivo icônico com motor EA888 2.0 TSI de 245 cv, câmbio DSG de 7 marchas, frenagem Brembo e visual aggressivo com rodas de 18".'
   }
 ];
+
+export const categories = ['Todos', 'Sedan', 'Sedan Premium', 'SUV', 'SUV Premium', 'Picape', 'Hatch Premium'];

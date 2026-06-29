@@ -1,13 +1,16 @@
 import React from 'react';
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import PrimaryButton from '../components/PrimaryButton';
 import { colors } from '../theme/colors';
 import { formatCurrency } from '../utils/formatCurrency';
 
-function Spec({ label, value }) {
+function Spec({ icon, label, value }) {
   return (
     <View style={styles.spec}>
+      <Ionicons name={icon} size={20} color={colors.primary} />
       <Text style={styles.specLabel}>{label}</Text>
       <Text style={styles.specValue}>{value}</Text>
     </View>
@@ -16,57 +19,142 @@ function Spec({ label, value }) {
 
 export default function DetailsScreen({ route, navigation, vehicles, favorites, toggleFavorite, addToProposal }) {
   const vehicle = vehicles.find((item) => item.id === route.params.vehicleId);
+
   if (!vehicle) {
     return (
       <Screen style={styles.center}>
-        <Text style={styles.title}>Veículo não encontrado</Text>
+        <Ionicons name="alert-circle-outline" size={54} color={colors.muted} />
+        <Text style={styles.notFoundTitle}>Veículo não encontrado</Text>
+        <PrimaryButton title="Voltar" onPress={() => navigation.goBack()} style={styles.backBtn} />
       </Screen>
     );
   }
 
-  return (
-    <Screen>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Image source={{ uri: vehicle.image }} style={styles.image} />
-        <Text style={styles.category}>{vehicle.category}</Text>
-        <Text style={styles.title}>{vehicle.name}</Text>
-        <Text style={styles.price}>{formatCurrency(vehicle.price)}</Text>
-        <Text style={styles.description}>{vehicle.description}</Text>
+  const isFav = favorites.includes(vehicle.id);
 
-        <View style={styles.grid}>
-          <Spec label="Ano" value={vehicle.year} />
-          <Spec label="KM" value={`${vehicle.km.toLocaleString('pt-BR')} km`} />
-          <Spec label="Câmbio" value={vehicle.transmission} />
-          <Spec label="Combustível" value={vehicle.fuel} />
-          <Spec label="Cor" value={vehicle.color} />
-          <Spec label="Estoque" value={`${vehicle.stock} unidade`} />
+  return (
+    <Screen noSafe>
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+
+        {/* Imagem com gradiente */}
+        <View style={styles.imageContainer}>
+          {vehicle.image ? (
+            <Image source={{ uri: vehicle.image }} style={styles.image} />
+          ) : (
+            <View style={[styles.image, styles.emptyImage]}>
+              <Ionicons name="car-outline" size={60} color={colors.muted} />
+            </View>
+          )}
+          <LinearGradient
+            colors={['rgba(10,10,15,0.5)', 'transparent', 'rgba(10,10,15,0.9)']}
+            style={StyleSheet.absoluteFill}
+          />
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={22} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.favButton} onPress={() => toggleFavorite(vehicle.id)}>
+            <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={22} color={isFav ? colors.danger : '#fff'} />
+          </TouchableOpacity>
+          <View style={styles.imageBottom}>
+            <View style={styles.categoryBadge}>
+              <Text style={styles.categoryText}>{vehicle.category}</Text>
+            </View>
+            <View style={[styles.stockBadge, vehicle.stock > 0 ? styles.inStock : styles.outStock]}>
+              <Ionicons name="checkmark-circle" size={12} color={vehicle.stock > 0 ? colors.success : colors.danger} />
+              <Text style={[styles.stockText, { color: vehicle.stock > 0 ? colors.success : colors.danger }]}>
+                {vehicle.stock > 0 ? 'Disponível' : 'Indisponível'}
+              </Text>
+            </View>
+          </View>
         </View>
 
-        <PrimaryButton title="Adicionar à proposta" onPress={() => addToProposal(vehicle)} style={styles.button} />
-        <PrimaryButton
-          title={favorites.includes(vehicle.id) ? 'Remover dos favoritos' : 'Salvar nos favoritos'}
-          variant="outline"
-          onPress={() => toggleFavorite(vehicle.id)}
-          style={styles.buttonSmall}
-        />
-        <PrimaryButton title="Finalizar interesse" variant="outline" onPress={() => navigation.navigate('Proposta')} style={styles.buttonSmall} />
+        {/* Info principal */}
+        <View style={styles.content}>
+          <Text style={styles.vehicleName}>{vehicle.name}</Text>
+          <Text style={styles.price}>{formatCurrency(vehicle.price)}</Text>
+
+          <Text style={styles.description}>{vehicle.description}</Text>
+
+          {/* Grid de specs */}
+          <Text style={styles.sectionTitle}>Especificações</Text>
+          <View style={styles.specGrid}>
+            <Spec icon="calendar-outline" label="Ano" value={vehicle.year} />
+            <Spec icon="speedometer-outline" label="Quilometragem" value={`${vehicle.km.toLocaleString('pt-BR')} km`} />
+            <Spec icon="git-branch-outline" label="Câmbio" value={vehicle.transmission} />
+            <Spec icon="flame-outline" label="Combustível" value={vehicle.fuel} />
+            <Spec icon="color-palette-outline" label="Cor" value={vehicle.color} />
+            <Spec icon="cube-outline" label="Estoque" value={`${vehicle.stock} unidade${vehicle.stock !== 1 ? 's' : ''}`} />
+          </View>
+
+          {/* Ações */}
+          <View style={styles.actions}>
+            <PrimaryButton
+              title="Adicionar à proposta"
+              onPress={() => { addToProposal(vehicle); navigation.navigate('Proposta'); }}
+              style={styles.actionBtn}
+            />
+            <PrimaryButton
+              title={isFav ? 'Remover dos favoritos' : 'Salvar nos favoritos'}
+              variant="outline"
+              onPress={() => toggleFavorite(vehicle.id)}
+              style={styles.actionBtn}
+            />
+          </View>
+        </View>
       </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { paddingBottom: 30 },
-  image: { width: '100%', height: 300 },
-  category: { color: colors.primary, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1, marginTop: 22, marginHorizontal: 18 },
-  title: { color: colors.text, fontSize: 30, fontWeight: '900', marginTop: 8, marginHorizontal: 18 },
-  price: { color: colors.primary, fontSize: 26, fontWeight: '900', marginTop: 8, marginHorizontal: 18 },
-  description: { color: colors.muted, lineHeight: 22, marginTop: 14, marginHorizontal: 18 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 22, marginHorizontal: 18 },
-  spec: { width: '47%', backgroundColor: colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.border },
-  specLabel: { color: colors.muted, fontSize: 12, marginBottom: 4 },
-  specValue: { color: colors.text, fontWeight: '800' },
-  button: { marginHorizontal: 18, marginTop: 24 },
-  buttonSmall: { marginHorizontal: 18, marginTop: 12 },
-  center: { justifyContent: 'center', alignItems: 'center' }
+  container: { paddingBottom: 40 },
+  imageContainer: { height: 320, position: 'relative' },
+  image: { width: '100%', height: '100%' },
+  emptyImage: { backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' },
+  backButton: {
+    position: 'absolute', top: 52, left: 16,
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+  },
+  favButton: {
+    position: 'absolute', top: 52, right: 16,
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+  },
+  imageBottom: {
+    position: 'absolute', bottom: 16, left: 16, right: 16,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  },
+  categoryBadge: {
+    backgroundColor: 'rgba(201,162,39,0.2)', borderWidth: 1, borderColor: colors.primary,
+    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4,
+  },
+  categoryText: { color: colors.primary, fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
+  stockBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+  },
+  inStock: {},
+  outStock: {},
+  stockText: { fontSize: 12, fontWeight: '700' },
+  content: { padding: 20 },
+  vehicleName: { color: colors.text, fontSize: 28, fontWeight: '900', marginBottom: 6 },
+  price: { color: colors.primary, fontSize: 32, fontWeight: '900', marginBottom: 16 },
+  description: { color: colors.textSecondary, lineHeight: 22, fontSize: 14, marginBottom: 24 },
+  sectionTitle: { color: colors.text, fontSize: 18, fontWeight: '900', marginBottom: 14 },
+  specGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 },
+  spec: {
+    width: '47%', backgroundColor: colors.card, borderRadius: 16, padding: 14,
+    borderWidth: 1, borderColor: colors.border, gap: 6,
+  },
+  specLabel: { color: colors.muted, fontSize: 11 },
+  specValue: { color: colors.text, fontWeight: '800', fontSize: 14 },
+  actions: { gap: 12 },
+  actionBtn: {},
+  center: { alignItems: 'center', justifyContent: 'center', gap: 12 },
+  notFoundTitle: { color: colors.text, fontSize: 18, fontWeight: '900' },
+  backBtn: { marginTop: 8, paddingHorizontal: 30 },
 });
