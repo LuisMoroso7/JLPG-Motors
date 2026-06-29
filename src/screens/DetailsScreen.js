@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
-  Alert, Dimensions, FlatList, Image, ScrollView,
-  Share, StyleSheet, Text, TouchableOpacity, View
+  Alert, Dimensions, FlatList, Image, Modal, ScrollView,
+  Share, StyleSheet, Text, TextInput, TouchableOpacity, View
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,7 +23,7 @@ function Spec({ icon, label, value }) {
   );
 }
 
-export default function DetailsScreen({ route, navigation, vehicles, favorites, toggleFavorite, addToProposal, addRecentlyViewed }) {
+export default function DetailsScreen({ route, navigation, vehicles, favorites, toggleFavorite, addToProposal, addRecentlyViewed, addPriceAlert }) {
   const vehicle = vehicles.find((item) => item.id === route.params.vehicleId);
   const [activePhoto, setActivePhoto] = useState(0);
   const [downPayment, setDownPayment] = useState('');
@@ -50,25 +50,26 @@ export default function DetailsScreen({ route, navigation, vehicles, favorites, 
   const installment = calcFinancing({ price: vehicle.price, downPayment: downVal, months });
 
 
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [alertPrice, setAlertPrice] = useState('');
+
   function handlePriceAlert() {
-    if (!addPriceAlert) return;
-    Alert.prompt(
-      '🔔 Alerta de preço',
-      `Atual: ${formatCurrency(vehicle.price)}\nDigite o preço alvo:`,
-      (text) => {
-        const targetPrice = Number(text);
-        if (!targetPrice || targetPrice <= 0) { Alert.alert('Valor inválido'); return; }
-        addPriceAlert({
-          vehicleId: vehicle.id,
-          vehicleName: vehicle.name,
-          currentPrice: vehicle.price,
-          targetPrice,
-          targetPriceFormatted: formatCurrency(targetPrice),
-        });
-      },
-      'plain-text',
-      String(Math.round(vehicle.price * 0.9))
-    );
+    setAlertPrice(String(Math.round(vehicle.price * 0.9)));
+    setShowAlertModal(true);
+  }
+
+  function confirmPriceAlert() {
+    const targetPrice = Number(alertPrice);
+    if (!targetPrice || targetPrice <= 0) { Alert.alert('Valor inválido', 'Digite um preço válido.'); return; }
+    addPriceAlert?.({
+      vehicleId: vehicle.id,
+      vehicleName: vehicle.name,
+      currentPrice: vehicle.price,
+      targetPrice,
+      targetPriceFormatted: formatCurrency(targetPrice),
+    });
+    setShowAlertModal(false);
+    Alert.alert('🔔 Alerta criado!', `Você será notificado quando ${vehicle.name} baixar para ${formatCurrency(targetPrice)}.`);
   }
 
   async function handleShare() {
@@ -232,6 +233,34 @@ export default function DetailsScreen({ route, navigation, vehicles, favorites, 
             <PrimaryButton title="🔔 Criar alerta de preço" variant="outline" onPress={handlePriceAlert} />
           </View>
         </View>
+
+        {/* Modal de alerta de preço */}
+        <Modal visible={showAlertModal} transparent animationType="fade">
+          <View style={styles.alertModalOverlay}>
+            <View style={styles.alertModalCard}>
+              <Ionicons name="notifications-outline" size={28} color={colors.primary} />
+              <Text style={styles.alertModalTitle}>Criar alerta de preço</Text>
+              <Text style={styles.alertModalSub}>Preço atual: {formatCurrency(vehicle.price)}</Text>
+              <Text style={styles.alertModalLabel}>Digite o preço alvo (R$)</Text>
+              <TextInput
+                value={alertPrice}
+                onChangeText={setAlertPrice}
+                keyboardType="numeric"
+                placeholder="Ex: 170000"
+                placeholderTextColor={colors.muted}
+                style={styles.alertModalInput}
+              />
+              <View style={styles.alertModalActions}>
+                <TouchableOpacity style={styles.alertModalCancel} onPress={() => setShowAlertModal(false)}>
+                  <Text style={styles.alertModalCancelText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.alertModalConfirm} onPress={confirmPriceAlert}>
+                  <Text style={styles.alertModalConfirmText}>Criar alerta</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </Screen>
   );
@@ -284,6 +313,17 @@ const styles = StyleSheet.create({
   installmentObs: { color: colors.muted, fontSize: 11, textAlign: 'center' },
   actions: { gap: 12, marginTop: 4 },
   center: { alignItems: 'center', justifyContent: 'center', gap: 12 },
+  alertModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 30 },
+  alertModalCard: { backgroundColor: colors.surface, borderRadius: 24, padding: 24, width: '100%', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: colors.border },
+  alertModalTitle: { color: colors.text, fontSize: 20, fontWeight: '900' },
+  alertModalSub: { color: colors.muted, fontSize: 13 },
+  alertModalLabel: { color: colors.textSecondary, fontSize: 13, fontWeight: '700', alignSelf: 'flex-start' },
+  alertModalInput: { width: '100%', backgroundColor: colors.input, borderRadius: 12, borderWidth: 1, borderColor: colors.border, color: colors.text, padding: 14, fontSize: 16 },
+  alertModalActions: { flexDirection: 'row', gap: 10, width: '100%', marginTop: 6 },
+  alertModalCancel: { flex: 1, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border, alignItems: 'center' },
+  alertModalCancelText: { color: colors.muted, fontWeight: '700' },
+  alertModalConfirm: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center' },
+  alertModalConfirmText: { color: colors.background, fontWeight: '900' },
   similarSection: { marginBottom: 20 },
   similarScroll: { gap: 12 },
   similarCard: { width: 160, height: 110, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#252535', position: 'relative' },

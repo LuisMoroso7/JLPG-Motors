@@ -1,123 +1,173 @@
-import React from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import PrimaryButton from '../components/PrimaryButton';
+import FadeInView from '../components/FadeInView';
 import { colors } from '../theme/colors';
 import { formatCurrency } from '../utils/formatCurrency';
 
-const STATUS_COLORS = {
-  pending: colors.primary,
-  contact: colors.info,
-  done: colors.success,
-};
+export default function HistoryScreen({ navigation, orders = [], testDrives = [] }) {
+  const [tab, setTab] = useState('orders');
 
-export default function HistoryScreen({ navigation, orders }) {
   return (
-    <Screen>
+    <Screen style={{ backgroundColor: colors.background }}>
       <View style={styles.header}>
-        <Text style={styles.title}>Histórico</Text>
-        <Text style={styles.subtitle}>
-          {orders.length > 0
-            ? `${orders.length} solicitação${orders.length > 1 ? 'ões' : ''} realizadas`
-            : 'Nenhuma solicitação ainda'}
-        </Text>
+        <Text style={[styles.title, { color: colors.text }]}>Histórico</Text>
+
+        {/* Tabs */}
+        <View style={[styles.tabs, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <TouchableOpacity
+            style={[styles.tab, tab === 'orders' && { backgroundColor: colors.primary }]}
+            onPress={() => setTab('orders')}
+          >
+            <Text style={[styles.tabText, { color: tab === 'orders' ? colors.background : colors.muted }]}>
+              Pedidos ({orders.length})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, tab === 'testdrives' && { backgroundColor: colors.primary }]}
+            onPress={() => setTab('testdrives')}
+          >
+            <Text style={[styles.tabText, { color: tab === 'testdrives' ? colors.background : colors.muted }]}>
+              Test Drives ({testDrives.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <FlatList
-        data={orders}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
-          <View style={styles.order}>
-            <View style={styles.orderHeader}>
-              <View style={styles.orderIdRow}>
-                <Ionicons name="receipt-outline" size={18} color={colors.primary} />
-                <Text style={styles.orderId}>Solicitação #{item.id}</Text>
-              </View>
-              <View style={styles.statusBadge}>
-                <View style={styles.statusDot} />
-                <Text style={styles.statusText}>Aguardando contato</Text>
-              </View>
-            </View>
-
-            <Text style={styles.orderDate}>
-              <Ionicons name="calendar-outline" size={12} color={colors.muted} /> {item.date}
-            </Text>
-
-            <View style={styles.itemsList}>
-              {item.items.map((vehicle) => (
-                <View key={vehicle.id} style={styles.vehicleRow}>
-                  <Ionicons name="car-outline" size={14} color={colors.muted} />
-                  <Text style={styles.vehicleName}>{vehicle.name}</Text>
-                  <Text style={styles.vehiclePrice}>{formatCurrency(vehicle.price)}</Text>
+      {tab === 'orders' ? (
+        <FlatList
+          data={orders}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item, index }) => (
+            <FadeInView delay={index * 60}>
+              <View style={[styles.orderCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={styles.orderHeader}>
+                  <View style={styles.orderIdRow}>
+                    <Ionicons name="receipt-outline" size={18} color={colors.primary} />
+                    <Text style={[styles.orderId, { color: colors.text }]}>Pedido #{item.id}</Text>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: 'rgba(201,162,39,0.1)', borderColor: 'rgba(201,162,39,0.3)' }]}>
+                    <View style={[styles.statusDot, { backgroundColor: colors.primary }]} />
+                    <Text style={[styles.statusText, { color: colors.primary }]}>Aguardando</Text>
+                  </View>
                 </View>
-              ))}
+                <Text style={[styles.orderDate, { color: colors.muted }]}>📅 {item.date}</Text>
+                <View style={[styles.itemsList, { borderTopColor: colors.border }]}>
+                  {item.items.map((vehicle) => (
+                    <View key={vehicle.id} style={styles.vehicleRow}>
+                      <Ionicons name="car-outline" size={14} color={colors.muted} />
+                      <Text style={[styles.vehicleName, { color: colors.textSecondary }]}>{vehicle.name}</Text>
+                      <Text style={[styles.vehiclePrice, { color: colors.muted }]}>{formatCurrency(vehicle.price)}</Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={[styles.orderFooter, { borderTopColor: colors.border }]}>
+                  <Text style={[styles.totalLabel, { color: colors.muted }]}>Total estimado</Text>
+                  <Text style={[styles.total, { color: colors.primary }]}>{formatCurrency(item.total)}</Text>
+                </View>
+              </View>
+            </FadeInView>
+          )}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <View style={[styles.emptyIcon, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Ionicons name="receipt-outline" size={40} color={colors.muted} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>Sem pedidos ainda</Text>
+              <Text style={[styles.emptyText, { color: colors.muted }]}>Suas solicitações de compra aparecerão aqui.</Text>
+              <PrimaryButton title="Ver catálogo" onPress={() => navigation.navigate('Catálogo')} style={styles.emptyBtn} />
             </View>
-
-            <View style={styles.orderFooter}>
-              <Text style={styles.totalLabel}>Total estimado</Text>
-              <Text style={styles.total}>{formatCurrency(item.total)}</Text>
+          }
+        />
+      ) : (
+        <FlatList
+          data={testDrives}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item, index }) => (
+            <FadeInView delay={index * 60}>
+              <View style={[styles.orderCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={styles.orderHeader}>
+                  <View style={styles.orderIdRow}>
+                    <Ionicons name="car-outline" size={18} color={colors.info} />
+                    <Text style={[styles.orderId, { color: colors.text }]}>Test Drive</Text>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: `${colors.success}15`, borderColor: `${colors.success}40` }]}>
+                    <View style={[styles.statusDot, { backgroundColor: colors.success }]} />
+                    <Text style={[styles.statusText, { color: colors.success }]}>Confirmado</Text>
+                  </View>
+                </View>
+                <View style={styles.tdInfo}>
+                  <View style={styles.tdRow}>
+                    <Ionicons name="car-sport-outline" size={15} color={colors.muted} />
+                    <Text style={[styles.tdText, { color: colors.text }]}>{item.vehicleName}</Text>
+                  </View>
+                  <View style={styles.tdRow}>
+                    <Ionicons name="calendar-outline" size={15} color={colors.muted} />
+                    <Text style={[styles.tdText, { color: colors.muted }]}>{item.date} às {item.hour}</Text>
+                  </View>
+                  <View style={styles.tdRow}>
+                    <Ionicons name="location-outline" size={15} color={colors.muted} />
+                    <Text style={[styles.tdText, { color: colors.muted }]}>JLPG Motors — Ciriaco, RS</Text>
+                  </View>
+                </View>
+                <View style={[styles.protocolBadge, { backgroundColor: `${colors.primary}10`, borderColor: `${colors.primary}30` }]}>
+                  <Text style={[styles.protocolText, { color: colors.primary }]}>Protocolo: {item.protocol}</Text>
+                </View>
+              </View>
+            </FadeInView>
+          )}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <View style={[styles.emptyIcon, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Ionicons name="car-outline" size={40} color={colors.muted} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>Sem test drives agendados</Text>
+              <Text style={[styles.emptyText, { color: colors.muted }]}>Agende um test drive pelo catálogo.</Text>
+              <PrimaryButton title="Ver catálogo" onPress={() => navigation.navigate('Catálogo')} style={styles.emptyBtn} />
             </View>
-          </View>
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyIcon}>
-              <Ionicons name="time-outline" size={48} color={colors.muted} />
-            </View>
-            <Text style={styles.emptyTitle}>Sem histórico ainda</Text>
-            <Text style={styles.emptyText}>Suas solicitações de compra aparecerão aqui.</Text>
-            <PrimaryButton
-              title="Montar proposta"
-              onPress={() => navigation.navigate('Proposta')}
-              style={styles.emptyBtn}
-            />
-          </View>
-        }
-      />
+          }
+        />
+      )}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { padding: 18, paddingBottom: 8 },
-  title: { color: colors.text, fontSize: 28, fontWeight: '900', marginTop: 10 },
-  subtitle: { color: colors.muted, marginTop: 5, fontSize: 13 },
-  list: { padding: 18, paddingTop: 10, paddingBottom: 30 },
-  order: {
-    backgroundColor: colors.card, padding: 18, borderRadius: 20,
-    borderWidth: 1, borderColor: colors.border, marginBottom: 14,
-  },
-  orderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
+  header: { padding: 18, paddingBottom: 12 },
+  title: { fontSize: 28, fontWeight: '900', marginTop: 10, marginBottom: 14 },
+  tabs: { flexDirection: 'row', borderRadius: 14, borderWidth: 1, overflow: 'hidden', padding: 4, gap: 4 },
+  tab: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center' },
+  tabText: { fontWeight: '700', fontSize: 13 },
+  list: { padding: 18, paddingTop: 8, paddingBottom: 30 },
+  orderCard: { borderRadius: 20, padding: 18, marginBottom: 14, borderWidth: 1 },
+  orderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   orderIdRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  orderId: { color: colors.text, fontSize: 16, fontWeight: '900' },
-  statusBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: 'rgba(201,162,39,0.1)', borderRadius: 8,
-    paddingHorizontal: 9, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(201,162,39,0.25)',
-  },
-  statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary },
-  statusText: { color: colors.primary, fontSize: 11, fontWeight: '700' },
-  orderDate: { color: colors.muted, fontSize: 12, marginBottom: 14 },
-  itemsList: { gap: 8, marginBottom: 14, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12 },
+  orderId: { fontSize: 16, fontWeight: '900' },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4, borderWidth: 1 },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusText: { fontSize: 11, fontWeight: '700' },
+  orderDate: { fontSize: 12, marginBottom: 14 },
+  itemsList: { gap: 8, marginBottom: 14, borderTopWidth: 1, paddingTop: 12 },
   vehicleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  vehicleName: { flex: 1, color: colors.textSecondary, fontSize: 14 },
-  vehiclePrice: { color: colors.muted, fontSize: 13, fontWeight: '700' },
-  orderFooter: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12,
-  },
-  totalLabel: { color: colors.muted, fontSize: 13 },
-  total: { color: colors.primary, fontSize: 20, fontWeight: '900' },
-  emptyContainer: { alignItems: 'center', paddingTop: 60, gap: 10, paddingHorizontal: 30 },
-  emptyIcon: {
-    width: 88, height: 88, borderRadius: 44,
-    backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 6,
-  },
-  emptyTitle: { color: colors.text, fontWeight: '900', fontSize: 20 },
-  emptyText: { color: colors.muted, textAlign: 'center', lineHeight: 20, fontSize: 13 },
-  emptyBtn: { marginTop: 8, paddingHorizontal: 30 },
+  vehicleName: { flex: 1, fontSize: 14 },
+  vehiclePrice: { fontSize: 13, fontWeight: '700' },
+  orderFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, paddingTop: 12 },
+  totalLabel: { fontSize: 13 },
+  total: { fontSize: 20, fontWeight: '900' },
+  tdInfo: { gap: 8, marginBottom: 12 },
+  tdRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  tdText: { fontSize: 14 },
+  protocolBadge: { borderRadius: 10, padding: 10, borderWidth: 1, alignItems: 'center' },
+  protocolText: { fontSize: 13, fontWeight: '700' },
+  empty: { alignItems: 'center', paddingTop: 50, gap: 10, paddingHorizontal: 30 },
+  emptyIcon: { width: 80, height: 80, borderRadius: 40, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  emptyTitle: { fontWeight: '900', fontSize: 20 },
+  emptyText: { textAlign: 'center', lineHeight: 20, fontSize: 13 },
+  emptyBtn: { marginTop: 8 },
 });

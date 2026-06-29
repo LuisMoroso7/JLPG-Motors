@@ -4,7 +4,7 @@ import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme/colors';
+import { colors, darkColors } from '../theme/colors';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -35,7 +35,7 @@ function makeTheme(colors) {
 }
 
 function MainTabs(props) {
-  const colors = props.colors || colors;
+  const colors = props.colors || darkColors;
   const isAdmin = props.user?.role === 'ADMIN';
 
   return (
@@ -63,14 +63,18 @@ function MainTabs(props) {
     >
       <Tab.Screen name="Início">{(sp) => <HomeScreen {...sp} {...props} />}</Tab.Screen>
       <Tab.Screen name="Catálogo">{(sp) => <CatalogScreen {...sp} {...props} />}</Tab.Screen>
-      <Tab.Screen name="Favoritos" options={{ tabBarBadge: props.favorites?.length > 0 ? props.favorites.length : undefined, tabBarBadgeStyle: [styles.tabBadge, { backgroundColor: colors.primary }] }}>
-        {(sp) => <FavoritesScreen {...sp} {...props} />}
-      </Tab.Screen>
-      <Tab.Screen name="Proposta" options={{ tabBarBadge: props.proposal?.length > 0 ? props.proposal.length : undefined, tabBarBadgeStyle: [styles.tabBadge, { backgroundColor: colors.primary }] }}>
-        {(sp) => <ProposalScreen {...sp} {...props} />}
-      </Tab.Screen>
-      <Tab.Screen name="Histórico">{(sp) => <HistoryScreen {...sp} {...props} />}</Tab.Screen>
-      <Tab.Screen name="Comparar">{(sp) => <CompareScreen {...sp} {...props} />}</Tab.Screen>
+      {!isAdmin && (
+        <Tab.Screen name="Favoritos" options={{ tabBarBadge: props.favorites?.length > 0 ? props.favorites.length : undefined, tabBarBadgeStyle: [styles.tabBadge, { backgroundColor: colors.primary }] }}>
+          {(sp) => <FavoritesScreen {...sp} {...props} />}
+        </Tab.Screen>
+      )}
+      {!isAdmin && (
+        <Tab.Screen name="Proposta" options={{ tabBarBadge: props.proposal?.length > 0 ? props.proposal.length : undefined, tabBarBadgeStyle: [styles.tabBadge, { backgroundColor: colors.primary }] }}>
+          {(sp) => <ProposalScreen {...sp} {...props} />}
+        </Tab.Screen>
+      )}
+      {!isAdmin && <Tab.Screen name="Histórico">{(sp) => <HistoryScreen {...sp} {...props} />}</Tab.Screen>}
+      {!isAdmin && <Tab.Screen name="Comparar">{(sp) => <CompareScreen {...sp} {...props} />}</Tab.Screen>}
       <Tab.Screen name="Perfil">{(sp) => <ProfileScreen {...sp} {...props} />}</Tab.Screen>
       {isAdmin && <Tab.Screen name="Admin">{(sp) => <AdminScreen {...sp} {...props} />}</Tab.Screen>}
     </Tab.Navigator>
@@ -78,7 +82,7 @@ function MainTabs(props) {
 }
 
 export default function AppNavigator(props) {
-  const colors = props.colors || colors;
+  const colors = props.colors || darkColors;
   const headerStyle = { backgroundColor: colors.surface };
   const headerOptions = { headerStyle, headerTintColor: colors.text, headerTitleStyle: { fontWeight: '900', color: colors.text }, headerShadowVisible: false };
 
@@ -91,8 +95,8 @@ export default function AppNavigator(props) {
           </Stack.Screen>
         ) : !props.user ? (
           <>
-            <Stack.Screen name="Login" options={{ headerShown: false }}>{(sp) => <LoginScreen {...sp} setUser={props.setUser} />}</Stack.Screen>
-            <Stack.Screen name="Cadastro" options={{ title: 'Criar cadastro' }}>{(sp) => <RegisterScreen {...sp} setUser={props.setUser} />}</Stack.Screen>
+            <Stack.Screen name="Login" options={{ headerShown: false }}>{(sp) => <LoginScreen {...sp} setUser={props.setUser} handleLogin={props.handleLogin} />}</Stack.Screen>
+            <Stack.Screen name="Cadastro" options={{ title: 'Criar cadastro' }}>{(sp) => <RegisterScreen {...sp} setUser={props.setUser} handleRegister={props.handleRegister} />}</Stack.Screen>
           </>
         ) : (
           <>

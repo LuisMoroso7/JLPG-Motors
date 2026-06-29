@@ -11,9 +11,9 @@ const STORE = {
   address: 'Ciriaco, RS',
   lat: -28.342753,
   lng: -51.885335,
-  phone: '(54) 99999-0000',
-  whatsapp: '5554999990000',
-  email: 'contato@jlpgmotors.com.br',
+  phone: '(54) 99671-0344',
+  whatsapp: '5554996710344',
+  email: 'jlpgmotors@gmail.com',
   hours: [
     { day: 'Segunda a Sexta', hours: '09:00 – 18:00' },
     { day: 'Sábado', hours: '09:00 – 13:00' },

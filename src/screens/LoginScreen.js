@@ -8,9 +8,8 @@ import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import PrimaryButton from '../components/PrimaryButton';
 import { colors } from '../theme/colors';
-import { apiLogin } from '../services/api';
 
-export default function LoginScreen({ navigation, setUser }) {
+export default function LoginScreen({ navigation, setUser, handleLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -22,25 +21,18 @@ export default function LoginScreen({ navigation, setUser }) {
     if (!email.trim()) newErrors.email = 'E-mail é obrigatório';
     else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'E-mail inválido';
     if (!password) newErrors.password = 'Senha é obrigatória';
-    else if (password.length < 6) newErrors.password = 'Mínimo 6 caracteres';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
 
-  async function handleLogin() {
+  async function handleSubmit() {
     if (!validate()) return;
     setLoading(true);
     try {
-      const data = await apiLogin(email, password);
-      setUser({
-        id: data.id,
-        name: data.username,
-        email: data.email,
-        role: data.role,
-      });
+      const userData = await handleLogin(email, password);
+      setUser(userData);
     } catch (e) {
-      const msg = e.response?.data || 'Erro ao fazer login. Verifique suas credenciais.';
-      Alert.alert('Erro', typeof msg === 'string' ? msg : 'Usuário ou senha inválidos!');
+      Alert.alert('Erro', e.message || 'Usuário ou senha inválidos!');
     } finally {
       setLoading(false);
     }
@@ -99,7 +91,7 @@ export default function LoginScreen({ navigation, setUser }) {
               {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
             </View>
 
-            <PrimaryButton title="Entrar" onPress={handleLogin} style={styles.btn} loading={loading} />
+            <PrimaryButton title="Entrar" onPress={handleSubmit} style={styles.btn} loading={loading} />
 
             <View style={styles.divider}>
               <View style={styles.dividerLine} />

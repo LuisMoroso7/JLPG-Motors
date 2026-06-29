@@ -1,26 +1,27 @@
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BASE_URL = 'https://jlpg-motors-backend.onrender.com';
 
+let authToken = null;
+let currentUserId = null;
+
 const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 15000,
+  timeout: 20000,
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Interceptor — adiciona JWT em todas as requisições autenticadas
-api.interceptors.request.use(async (config) => {
-  const token = await AsyncStorage.getItem('@jlpg:token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+api.interceptors.request.use((config) => {
+  if (authToken) config.headers.Authorization = `Bearer ${authToken}`;
   return config;
 });
 
 // AUTH
 export async function apiLogin(email, password) {
   const res = await api.post('/auth-service/auth/login', { email, password });
-  await AsyncStorage.setItem('@jlpg:token', res.data.token);
-  return res.data; // { token, id, username, email, role }
+  authToken = res.data.token;
+  currentUserId = res.data.id;
+  return res.data;
 }
 
 export async function apiRegister({ username, email, password }) {
@@ -28,8 +29,9 @@ export async function apiRegister({ username, email, password }) {
   return res.data;
 }
 
-export async function apiLogout() {
-  await AsyncStorage.removeItem('@jlpg:token');
+export function apiLogout() {
+  authToken = null;
+  currentUserId = null;
 }
 
 // VEHICLES
@@ -99,7 +101,7 @@ function mapVehicle(v) {
     category: v.category,
     color: v.color,
     stock: v.stock,
-    description: v.description,
+    description: v.description || '',
     image: v.imageUrl || '',
     images: v.imageUrl ? [v.imageUrl] : [],
     plate: v.plate,
@@ -107,7 +109,6 @@ function mapVehicle(v) {
   };
 }
 
-// Mapeia campos do front para o back
 function mapVehicleToApi(v) {
   return {
     name: v.name,
@@ -121,9 +122,9 @@ function mapVehicleToApi(v) {
     category: v.category,
     color: v.color,
     stock: Number(v.stock),
-    description: v.description,
+    description: v.description || '',
     imageUrl: v.image || '',
-    plate: v.plate || `JLPG${Date.now().toString().slice(-4)}`,
+    plate: v.plate || `JP${Date.now().toString().slice(-6)}`,
   };
 }
 

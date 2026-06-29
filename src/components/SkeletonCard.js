@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 
