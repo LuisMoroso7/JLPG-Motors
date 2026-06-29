@@ -27,22 +27,20 @@ import ReviewsScreen from '../screens/ReviewsScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-function makeTheme(colors) {
+function makeTheme(c) {
   return {
     ...DefaultTheme,
-    colors: { ...DefaultTheme.colors, background: colors.background, card: colors.surface, text: colors.text, border: colors.border, primary: colors.primary },
+    colors: { ...DefaultTheme.colors, background: c.background, card: c.surface, text: c.text, border: c.border, primary: c.primary },
   };
 }
 
-function MainTabs(props) {
-  const colors = props.colors || darkColors;
-  const isAdmin = props.user?.role === 'ADMIN';
-
+// TABS DO CLIENTE
+function ClientTabs(props) {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarStyle: [styles.tabBar, { backgroundColor: colors.surface, borderTopColor: colors.border }],
+        tabBarStyle: styles.tabBar,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.muted,
         tabBarLabelStyle: styles.tabLabel,
@@ -55,7 +53,6 @@ function MainTabs(props) {
             'Histórico': focused ? 'time' : 'time-outline',
             'Comparar': focused ? 'git-compare' : 'git-compare-outline',
             'Perfil': focused ? 'person' : 'person-outline',
-            'Admin': focused ? 'settings' : 'settings-outline',
           };
           return <Ionicons name={icons[route.name] || 'ellipse'} size={22} color={color} />;
         },
@@ -63,28 +60,60 @@ function MainTabs(props) {
     >
       <Tab.Screen name="Início">{(sp) => <HomeScreen {...sp} {...props} />}</Tab.Screen>
       <Tab.Screen name="Catálogo">{(sp) => <CatalogScreen {...sp} {...props} />}</Tab.Screen>
-      {!isAdmin && (
-        <Tab.Screen name="Favoritos" options={{ tabBarBadge: props.favorites?.length > 0 ? props.favorites.length : undefined, tabBarBadgeStyle: [styles.tabBadge, { backgroundColor: colors.primary }] }}>
-          {(sp) => <FavoritesScreen {...sp} {...props} />}
-        </Tab.Screen>
-      )}
-      {!isAdmin && (
-        <Tab.Screen name="Proposta" options={{ tabBarBadge: props.proposal?.length > 0 ? props.proposal.length : undefined, tabBarBadgeStyle: [styles.tabBadge, { backgroundColor: colors.primary }] }}>
-          {(sp) => <ProposalScreen {...sp} {...props} />}
-        </Tab.Screen>
-      )}
-      {!isAdmin && <Tab.Screen name="Histórico">{(sp) => <HistoryScreen {...sp} {...props} />}</Tab.Screen>}
-      {!isAdmin && <Tab.Screen name="Comparar">{(sp) => <CompareScreen {...sp} {...props} />}</Tab.Screen>}
+      <Tab.Screen name="Favoritos" options={{ tabBarBadge: props.favorites?.length > 0 ? props.favorites.length : undefined, tabBarBadgeStyle: styles.tabBadge }}>
+        {(sp) => <FavoritesScreen {...sp} {...props} />}
+      </Tab.Screen>
+      <Tab.Screen name="Proposta" options={{ tabBarBadge: props.proposal?.length > 0 ? props.proposal.length : undefined, tabBarBadgeStyle: styles.tabBadge }}>
+        {(sp) => <ProposalScreen {...sp} {...props} />}
+      </Tab.Screen>
+      <Tab.Screen name="Histórico">{(sp) => <HistoryScreen {...sp} {...props} />}</Tab.Screen>
+      <Tab.Screen name="Comparar">{(sp) => <CompareScreen {...sp} {...props} />}</Tab.Screen>
       <Tab.Screen name="Perfil">{(sp) => <ProfileScreen {...sp} {...props} />}</Tab.Screen>
-      {isAdmin && <Tab.Screen name="Admin">{(sp) => <AdminScreen {...sp} {...props} />}</Tab.Screen>}
+    </Tab.Navigator>
+  );
+}
+
+// TABS DO ADMIN
+function AdminTabs(props) {
+  const pendingDrives = props.testDrives?.filter((t) => t.status === 'confirmed' || t.status === 'pending').length || 0;
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarStyle: styles.tabBar,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.muted,
+        tabBarLabelStyle: styles.tabLabel,
+        tabBarIcon: ({ focused, color }) => {
+          const icons = {
+            'Início': focused ? 'home' : 'home-outline',
+            'Catálogo': focused ? 'car-sport' : 'car-sport-outline',
+            'Painel': focused ? 'settings' : 'settings-outline',
+            'Perfil': focused ? 'person' : 'person-outline',
+          };
+          return <Ionicons name={icons[route.name] || 'ellipse'} size={22} color={color} />;
+        },
+      })}
+    >
+      <Tab.Screen name="Início">{(sp) => <HomeScreen {...sp} {...props} />}</Tab.Screen>
+      <Tab.Screen name="Catálogo">{(sp) => <CatalogScreen {...sp} {...props} />}</Tab.Screen>
+      <Tab.Screen name="Painel"
+        options={{ tabBarBadge: pendingDrives > 0 ? pendingDrives : undefined, tabBarBadgeStyle: styles.tabBadge }}>
+        {(sp) => <AdminScreen {...sp} {...props} />}
+      </Tab.Screen>
+      <Tab.Screen name="Perfil">{(sp) => <ProfileScreen {...sp} {...props} />}</Tab.Screen>
     </Tab.Navigator>
   );
 }
 
 export default function AppNavigator(props) {
-  const colors = props.colors || darkColors;
-  const headerStyle = { backgroundColor: colors.surface };
-  const headerOptions = { headerStyle, headerTintColor: colors.text, headerTitleStyle: { fontWeight: '900', color: colors.text }, headerShadowVisible: false };
+  const isAdmin = props.user?.role === 'ADMIN';
+  const headerOptions = {
+    headerStyle: { backgroundColor: colors.surface },
+    headerTintColor: colors.text,
+    headerTitleStyle: { fontWeight: '900', color: colors.text },
+    headerShadowVisible: false,
+  };
 
   return (
     <NavigationContainer theme={makeTheme(colors)}>
@@ -95,19 +124,42 @@ export default function AppNavigator(props) {
           </Stack.Screen>
         ) : !props.user ? (
           <>
-            <Stack.Screen name="Login" options={{ headerShown: false }}>{(sp) => <LoginScreen {...sp} setUser={props.setUser} handleLogin={props.handleLogin} />}</Stack.Screen>
-            <Stack.Screen name="Cadastro" options={{ title: 'Criar cadastro' }}>{(sp) => <RegisterScreen {...sp} setUser={props.setUser} handleRegister={props.handleRegister} />}</Stack.Screen>
+            <Stack.Screen name="Login" options={{ headerShown: false }}>
+              {(sp) => <LoginScreen {...sp} setUser={props.setUser} handleLogin={props.handleLogin} />}
+            </Stack.Screen>
+            <Stack.Screen name="Cadastro" options={{ title: 'Criar cadastro' }}>
+              {(sp) => <RegisterScreen {...sp} setUser={props.setUser} handleRegister={props.handleRegister} />}
+            </Stack.Screen>
           </>
         ) : (
           <>
-            <Stack.Screen name="JLPG Motors" options={{ headerShown: false }}>{(sp) => <MainTabs {...sp} {...props} />}</Stack.Screen>
-            <Stack.Screen name="Detalhes" options={{ title: 'Detalhes do Veículo' }}>{(sp) => <DetailsScreen {...sp} {...props} />}</Stack.Screen>
-            <Stack.Screen name="FormulárioVeículo" options={{ title: 'Veículo' }}>{(sp) => <VehicleFormScreen {...sp} {...props} />}</Stack.Screen>
-            <Stack.Screen name="Notificações" options={{ title: 'Notificações' }}>{(sp) => <NotificationsScreen {...sp} {...props} />}</Stack.Screen>
-            <Stack.Screen name="Chat" options={{ title: 'Chat com Vendedor', headerShown: false }}>{(sp) => <ChatScreen {...sp} {...props} />}</Stack.Screen>
-            <Stack.Screen name="TestDrive" options={{ title: 'Agendar Test Drive' }}>{(sp) => <TestDriveScreen {...sp} {...props} />}</Stack.Screen>
-            <Stack.Screen name="Loja" options={{ title: 'Nossa Loja' }}>{(sp) => <StoreScreen {...sp} {...props} />}</Stack.Screen>
-            <Stack.Screen name="Avaliações" options={{ title: 'Avaliações' }}>{(sp) => <ReviewsScreen {...sp} {...props} />}</Stack.Screen>
+            <Stack.Screen name="Main" options={{ headerShown: false }}>
+              {(sp) => isAdmin
+                ? <AdminTabs {...sp} {...props} />
+                : <ClientTabs {...sp} {...props} />
+              }
+            </Stack.Screen>
+            <Stack.Screen name="Detalhes" options={{ title: 'Detalhes do Veículo' }}>
+              {(sp) => <DetailsScreen {...sp} {...props} />}
+            </Stack.Screen>
+            <Stack.Screen name="FormulárioVeículo" options={{ title: 'Veículo' }}>
+              {(sp) => <VehicleFormScreen {...sp} {...props} />}
+            </Stack.Screen>
+            <Stack.Screen name="Notificações" options={{ title: 'Notificações' }}>
+              {(sp) => <NotificationsScreen {...sp} {...props} />}
+            </Stack.Screen>
+            <Stack.Screen name="Chat" options={{ headerShown: false }}>
+              {(sp) => <ChatScreen {...sp} {...props} />}
+            </Stack.Screen>
+            <Stack.Screen name="TestDrive" options={{ title: 'Agendar Test Drive' }}>
+              {(sp) => <TestDriveScreen {...sp} {...props} />}
+            </Stack.Screen>
+            <Stack.Screen name="Loja" options={{ title: 'Nossa Loja' }}>
+              {(sp) => <StoreScreen {...sp} {...props} />}
+            </Stack.Screen>
+            <Stack.Screen name="Avaliações" options={{ title: 'Avaliações' }}>
+              {(sp) => <ReviewsScreen {...sp} {...props} />}
+            </Stack.Screen>
           </>
         )}
       </Stack.Navigator>
@@ -116,7 +168,7 @@ export default function AppNavigator(props) {
 }
 
 const styles = StyleSheet.create({
-  tabBar: { height: 62, paddingBottom: 8, paddingTop: 6, borderTopWidth: 1 },
+  tabBar: { backgroundColor: colors.surface, borderTopColor: colors.border, borderTopWidth: 1, height: 62, paddingBottom: 8, paddingTop: 6 },
   tabLabel: { fontSize: 10, fontWeight: '700' },
-  tabBadge: { color: '#0A0A0F', fontSize: 10, fontWeight: '900' },
+  tabBadge: { backgroundColor: colors.primary, color: colors.background, fontSize: 10, fontWeight: '900' },
 });
