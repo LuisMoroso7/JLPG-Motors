@@ -5,11 +5,10 @@ import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import PrimaryButton from '../components/PrimaryButton';
 import FadeInView from '../components/FadeInView';
-import { darkColors } from '../theme/colors';
+import { colors } from '../theme/colors';
 import { formatCurrency } from '../utils/formatCurrency';
 
-export default function ProposalScreen({ navigation, proposal, removeFromProposal, finishOrder, user, colors: themeColors }) {
-  const colors = themeColors || darkColors;
+export default function ProposalScreen({ navigation, proposal, removeFromProposal, finishOrder, user}) {
   const total = proposal.reduce((sum, item) => sum + item.price, 0);
 
   function handleFinish() {

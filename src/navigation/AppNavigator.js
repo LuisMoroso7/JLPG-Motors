@@ -4,7 +4,7 @@ import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { darkColors } from '../theme/colors';
+import { colors } from '../theme/colors';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -35,7 +35,7 @@ function makeTheme(colors) {
 }
 
 function MainTabs(props) {
-  const colors = props.colors || darkColors;
+  const colors = props.colors || colors;
   const isAdmin = props.user?.role === 'ADMIN';
 
   return (
@@ -78,7 +78,7 @@ function MainTabs(props) {
 }
 
 export default function AppNavigator(props) {
-  const colors = props.colors || darkColors;
+  const colors = props.colors || colors;
   const headerStyle = { backgroundColor: colors.surface };
   const headerOptions = { headerStyle, headerTintColor: colors.text, headerTitleStyle: { fontWeight: '900', color: colors.text }, headerShadowVisible: false };
 

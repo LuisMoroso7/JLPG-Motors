@@ -8,15 +8,14 @@ import Screen from '../components/Screen';
 import VehicleCard from '../components/VehicleCard';
 import SkeletonCard from '../components/SkeletonCard';
 import FadeInView from '../components/FadeInView';
-import { darkColors } from '../theme/colors';
+import { colors } from '../theme/colors';
 import { categories, brands } from '../data/vehicles';
 
 const FUELS = ['Todos', 'Gasolina', 'Flex', 'Diesel'];
 const TRANSMISSIONS = ['Todos', 'Automático', 'Manual', 'CVT', 'DSG'];
 const MAX_HISTORY = 5;
 
-export default function CatalogScreen({ navigation, vehicles, favorites, toggleFavorite, colors: themeColors }) {
-  const colors = themeColors || darkColors;
+export default function CatalogScreen({ navigation, vehicles, favorites, toggleFavorite}) {
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchHistory, setSearchHistory] = useState(['BMW', 'SUV 2022', 'Toyota automático']);

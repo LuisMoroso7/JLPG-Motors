@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import FadeInView from '../components/FadeInView';
-import { darkColors } from '../theme/colors';
+import { colors } from '../theme/colors';
 import { formatCurrency } from '../utils/formatCurrency';
 
 function InfoRow({ icon, label, value, colors }) {
@@ -38,8 +38,7 @@ function MenuItem({ icon, label, onPress, danger = false, right, colors }) {
   );
 }
 
-export default function ProfileScreen({ user, setUser, orders, favorites, isDark, toggleTheme, priceAlerts = [], colors: themeColors }) {
-  const colors = themeColors || darkColors;
+export default function ProfileScreen({ user, setUser, orders, favorites, isDark, toggleTheme, priceAlerts = []}) {
 
   function handleLogout() {
     Alert.alert('Sair da conta', 'Tem certeza que deseja sair?', [

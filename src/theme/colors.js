@@ -1,4 +1,3 @@
-// Tema dark
 export const darkColors = {
   background: '#0A0A0F',
   surface: '#12121A',
@@ -24,7 +23,6 @@ export const darkColors = {
   isDark: true,
 };
 
-// Tema light
 export const lightColors = {
   background: '#F5F5F7',
   surface: '#FFFFFF',
@@ -50,5 +48,5 @@ export const lightColors = {
   isDark: false,
 };
 
-// Export padrão (dark)
+// Export padrão como darkColors para manter compatibilidade com import { colors }
 export const colors = darkColors;

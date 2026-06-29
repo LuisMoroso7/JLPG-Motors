@@ -15,7 +15,7 @@ const CATEGORY_ICONS = {
   'Picape': 'construct-outline', 'Hatch Premium': 'flash-outline',
 };
 
-export default function HomeScreen({ navigation, vehicles, favorites, toggleFavorite, user, recentlyViewed = [] }) {
+export default function HomeScreen({ navigation, vehicles, favorites, toggleFavorite, user, recentlyViewed = []}) {
   const highlights = vehicles.filter((v) => v.featured).slice(0, 3);
   const totalVehicles = vehicles.length;
   const avgPrice = vehicles.reduce((s, v) => s + v.price, 0) / totalVehicles;
