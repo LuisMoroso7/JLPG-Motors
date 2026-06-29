@@ -34,7 +34,7 @@ function MenuItem({ icon, label, onPress, danger = false, right }) {
   );
 }
 
-export default function ProfileScreen({ user, setUser, orders, favorites, priceAlerts = [] }) {
+export default function ProfileScreen({ user, setUser, logout, orders, favorites, priceAlerts = [] }) {
   const [avatar, setAvatar] = useState(null);
 
   async function pickAvatar() {
@@ -50,7 +50,7 @@ export default function ProfileScreen({ user, setUser, orders, favorites, priceA
   function handleLogout() {
     Alert.alert('Sair da conta', 'Tem certeza que deseja sair?', [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Sair', style: 'destructive', onPress: () => setUser(null) },
+      { text: 'Sair', style: 'destructive', onPress: () => logout ? logout() : setUser(null) },
     ]);
   }
 

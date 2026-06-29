@@ -1,121 +1,127 @@
-# JLPG Motors — Frontend Mobile
+# JLPG Motors - Frontend Mobile
 
-Aplicativo mobile desenvolvido em React Native com Expo para a plataforma de e-commerce de veículos JLPG Motors, localizada em Ciriaco, RS.
+Aplicativo mobile desenvolvido em React Native com Expo para a plataforma de e-commerce de veiculos JLPG Motors.
 
 ## Tecnologias
 
-- **React Native** com Expo SDK 54
-- **React Navigation** — navegação por tabs e stack
-- **Expo Linear Gradient** — gradientes profissionais
-- **Expo Vector Icons** — ícones Ionicons
-- **Expo Image Picker** — upload de fotos
-- **Axios** — integração com a API REST
-- **API Anthropic Claude** — assistente de IA no chat de negociação
+- React Native com Expo SDK 54
+- React Navigation
+- Expo Linear Gradient
+- Expo Vector Icons
+- Axios
+- AsyncStorage para sessao local
 
 ## Funcionalidades
 
 ### Cliente
-- Onboarding animado com 4 slides de boas-vindas
-- Login e cadastro com validação completa
-- Catálogo com 36+ veículos (carros e motos)
-- Filtros por categoria, marca, combustível, câmbio e faixa de preço
-- Ordenação por preço, km e ano
-- Alternância entre lista e grade
-- Pull-to-refresh no catálogo
-- Galeria de fotos na tela de detalhes
-- Simulador de financiamento com prazo e entrada
-- Comparação de dois veículos lado a lado
-- Sistema de favoritos
-- Proposta de compra com múltiplos veículos
-- Chat com assistente de IA para negociação
-- Agendamento de test drive com calendário
-- Avaliações e reviews dos veículos
-- Histórico de pedidos e test drives
-- Alerta de preço personalizado
-- Compartilhar veículo e proposta
-- Perfil com foto e informações
+
+- Onboarding
+- Login e cadastro
+- Catalogo de veiculos
+- Filtros por categoria, marca, combustivel, cambio e faixa de preco
+- Ordenacao por preco, km e ano
+- Detalhes do veiculo
+- Simulador de financiamento
+- Comparacao de veiculos
+- Favoritos locais
+- Proposta de compra integrada ao backend de pedidos
+- Agendamento de test drive local
+- Historico de pedidos e test drives
+- Alertas de preco locais
+- Perfil
 
 ### Administrador
-- Painel admin exclusivo (visível só para ADMIN)
-- Cadastro de veículos com dropdowns (ano, câmbio, combustível, categoria, cor)
-- Edição e exclusão de veículos
-- Gerenciamento de test drives — aprovar ou recusar
-- Chat com clientes com opção de assumir conversa como gerente
-- Botões de aprovar ou recusar venda no chat
 
-### Loja
-- Mapa visual com localização em Ciriaco, RS
-- Botões para abrir no Google Maps e Waze
-- Contato via WhatsApp, telefone e e-mail
-- Horário de funcionamento
+- Painel admin para usuarios com `role=ADMIN`
+- Cadastro, edicao e exclusao de veiculos via backend
+- Campo de imagem por URL publica
+- Gerenciamento local de test drives
 
-## Integração com Backend
+## Integracao com Backend
 
-O app integra com a API REST do JLPG Motors Backend hospedada em:
+O app consome o `gateway-service` do backend Spring Boot.
 
-https://jlpg-motors-backend.onrender.com
+URL padrao local:
 
-Endpoints utilizados:
-- POST /auth-service/auth/login — autenticação
-- POST /auth-service/auth/register — cadastro
-- GET /vehicle-service/vehicles — listagem de veículos
-- POST /vehicle-service/vehicles — cadastro de veículo (ADMIN)
-- PUT /vehicle-service/vehicles/{id} — edição (ADMIN)
-- DELETE /vehicle-service/vehicles/{id} — exclusão (ADMIN)
-- POST /customer-service/favorites/{vehicleId} — toggle favorito
-- GET /customer-service/favorites — listar favoritos
-- POST /customer-service/negotiations/{vehicleId} — iniciar negociação
-- GET /customer-service/negotiations/my-chats — histórico do cliente
-- PUT /customer-service/negotiations/{chatId}/close — encerrar (ADMIN)
-
-O app possui fallback automático — se o backend estiver offline, continua funcionando com dados locais.
-
-## Como rodar
-
-### Pré-requisitos
-- Node.js 18+
-- Expo Go instalado no celular (iOS ou Android)
-- Celular e computador na mesma rede Wi-Fi
-
-### Instalação
-
+```bash
+http://localhost:8080
 ```
-git clone https://github.com/LuisMoroso7/JLPG-Motors.git
-cd JLPG-Motors
+
+Para alterar a URL da API, use:
+
+```bash
+EXPO_PUBLIC_API_URL=http://SEU_IP_LOCAL:8080
+```
+
+No celular fisico com Expo Go, `localhost` aponta para o proprio celular. Use o IP da maquina que esta rodando o backend, por exemplo:
+
+```bash
+EXPO_PUBLIC_API_URL=http://192.168.0.10:8080
+```
+
+Endpoints usados:
+
+- `POST /auth/login` - login
+- `POST /auth/register` - cadastro
+- `GET /products?targetCurrency=BRL` - listagem de veiculos
+- `POST /ws/product` - cadastro de veiculo, exige ADMIN
+- `PUT /ws/product/{id}` - edicao de veiculo, exige ADMIN
+- `DELETE /ws/product/{id}` - exclusao de veiculo, exige ADMIN
+- `POST /ws/orders` - criacao de pedido/proposta
+- `GET /ws/orders/BRL` - historico de pedidos do usuario logado
+
+Recursos mantidos locais nesta etapa:
+
+- Favoritos
+- Test drives
+- Chat
+- Reviews
+- Alertas de preco
+
+## Como Rodar
+
+### Pre-requisitos
+
+- Node.js 18+
+- Expo Go instalado no celular, se for testar em dispositivo fisico
+- Backend rodando pelo `gateway-service`
+
+### Instalacao
+
+```bash
 npm install
+```
+
+### Ambiente local no navegador/Expo Web
+
+```bash
 npm start
 ```
 
-Escaneia o QR Code com o Expo Go no celular.
+### Ambiente local no celular fisico
 
-## Credenciais de teste
+No PowerShell:
 
-| Perfil | E-mail | Senha |
-|---|---|---|
-| Administrador | adm@jlpg.com | senha123 |
-| Cliente | comum@jlpg.com | senha123 |
-
-## Estrutura do projeto
-
+```powershell
+$env:EXPO_PUBLIC_API_URL="http://SEU_IP_LOCAL:8080"
+npm start
 ```
+
+Depois escaneie o QR Code com o Expo Go.
+
+## Credenciais
+
+O usuario administrador sera criado pelo time de backend. Para acesso admin, o usuario precisa retornar `role: "ADMIN"` no login.
+
+## Estrutura
+
+```text
 src/
-components/     Componentes reutilizáveis
+components/     Componentes reutilizaveis
 data/           Dados mockados de fallback
-navigation/     Configuração de rotas
-screens/        Todas as telas do app
-services/       Integração com backend (api.js)
-theme/          Tema dark profissional (colors.js)
-utils/          Utilitários (formatCurrency.js)
+navigation/     Configuracao de rotas
+screens/        Telas do app
+services/       Integracao com backend
+theme/          Tema visual
+utils/          Utilitarios
 ```
-
-## Disciplina
-
-Projeto desenvolvido para a disciplina Projeto, Design e Engenharia de Processos — ATITUS Educação, Passo Fundo/RS.
-
-Professor: Augusto Kruger Ortolan / Luciano Rodrigo Ferretto
-
-Integrantes:
-- João Paulo Pasolini
-- Luis Eduardo Moroso
-- Gustavo Marcante Vazzoler
-- Pedro Henrique Renosto

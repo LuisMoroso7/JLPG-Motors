@@ -1,9 +1,10 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
-const BASE_URL = 'https://jlpg-motors-backend.onrender.com';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080';
+const AUTH_STORAGE_KEY = '@jlpg-motors:auth';
 
 let authToken = null;
-let currentUserId = null;
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -16,85 +17,130 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+function normalizeError(error, fallbackMessage) {
+  const message = error?.response?.data;
+  if (typeof message === 'string' && message.trim()) return message;
+  return error?.message || fallbackMessage;
+}
+
+function setAuthToken(token) {
+  authToken = token || null;
+}
+
+function mapUser(data) {
+  return {
+    id: data.id,
+    name: data.username,
+    username: data.username,
+    email: data.email,
+    role: data.role === 'ADMIN' ? 'ADMIN' : 'USER',
+  };
+}
+
+async function persistSession(data) {
+  const user = mapUser(data);
+  await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ token: data.token, user }));
+  return user;
+}
+
+export async function apiLoadSession() {
+  const raw = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
+  if (!raw) return null;
+
+  try {
+    const session = JSON.parse(raw);
+    if (!session?.token || !session?.user) return null;
+    setAuthToken(session.token);
+    return session.user;
+  } catch (e) {
+    await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+    return null;
+  }
+}
+
 // AUTH
 export async function apiLogin(email, password) {
-  const res = await api.post('/auth-service/auth/login', { email, password });
-  authToken = res.data.token;
-  currentUserId = res.data.id;
-  return res.data;
+  try {
+    const res = await api.post('/auth/login', { email, password });
+    setAuthToken(res.data.token);
+    const user = await persistSession(res.data);
+    return { ...res.data, user };
+  } catch (error) {
+    throw new Error(normalizeError(error, 'Usuario ou senha invalidos.'));
+  }
 }
 
 export async function apiRegister({ username, email, password }) {
-  const res = await api.post('/auth-service/auth/register', { username, email, password, role: 'USER' });
-  return res.data;
+  try {
+    const res = await api.post('/auth/register', { username, email, password, role: 'USER' });
+    return res.data;
+  } catch (error) {
+    throw new Error(normalizeError(error, 'Nao foi possivel criar o cadastro.'));
+  }
 }
 
-export function apiLogout() {
-  authToken = null;
-  currentUserId = null;
+export async function apiLogout() {
+  setAuthToken(null);
+  await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
 }
 
-// VEHICLES
+// VEHICLES / PRODUCTS
 export async function apiGetVehicles() {
-  const res = await api.get('/vehicle-service/vehicles');
+  const res = await api.get('/products', { params: { targetCurrency: 'BRL' } });
   return res.data.map(mapVehicle);
 }
 
 export async function apiCreateVehicle(vehicle) {
-  const res = await api.post('/vehicle-service/vehicles', mapVehicleToApi(vehicle));
+  const res = await api.post('/ws/product', mapVehicleToApi(vehicle));
   return mapVehicle(res.data);
 }
 
 export async function apiUpdateVehicle(id, vehicle) {
-  const res = await api.put(`/vehicle-service/vehicles/${id}`, mapVehicleToApi(vehicle));
+  const res = await api.put(`/ws/product/${id}`, mapVehicleToApi(vehicle));
   return mapVehicle(res.data);
 }
 
 export async function apiDeleteVehicle(id) {
-  await api.delete(`/vehicle-service/vehicles/${id}`);
+  await api.delete(`/ws/product/${id}`);
 }
 
-// FAVORITES
-export async function apiToggleFavorite(vehicleId) {
-  const res = await api.post(`/customer-service/favorites/${vehicleId}`);
-  return res.data;
+// ORDERS
+export async function apiCreateOrder(vehicles, targetCurrency = 'BRL') {
+  const items = vehicles.map((vehicle) => ({
+    productId: vehicle.id,
+    quantity: vehicle.quantity || 1,
+  }));
+  const res = await api.post('/ws/orders', { targetCurrency, items });
+  return mapOrder(res.data, vehicles);
 }
 
-export async function apiGetFavorites() {
-  const res = await api.get('/customer-service/favorites');
-  return res.data;
+export async function apiGetOrders(currency = 'BRL') {
+  const res = await api.get(`/ws/orders/${currency}`);
+  return res.data.map((order) => mapOrder(order));
 }
 
-// NEGOTIATIONS
-export async function apiStartNegotiation(vehicleId) {
-  const res = await api.post(`/customer-service/negotiations/${vehicleId}`);
-  return res.data;
-}
-
-export async function apiGetMyNegotiations() {
-  const res = await api.get('/customer-service/negotiations/my-chats');
-  return res.data;
-}
-
+// Legacy customer-service endpoints are intentionally disabled in the current
+// backend architecture. Keep these exports so older screens can fall back local.
 export async function apiGetAllNegotiations() {
-  const res = await api.get('/customer-service/negotiations/admin/all');
-  return res.data;
+  throw new Error('customer-service legado nao esta roteado pelo gateway.');
 }
 
-export async function apiCloseNegotiation(chatId) {
-  const res = await api.put(`/customer-service/negotiations/${chatId}/close`);
-  return res.data;
+export async function apiCloseNegotiation() {
+  throw new Error('customer-service legado nao esta roteado pelo gateway.');
 }
 
-// Mapeia campos do back para o front
 function mapVehicle(v) {
+  const imageUrl = v.imageUrl || '';
   return {
-    id: v.id,
+    id: String(v.id),
     name: v.name,
     brand: v.brand,
     model: v.model,
     year: v.yearModel,
-    price: Number(v.price),
+    price: Number(v.price ?? v.basePrice ?? 0),
+    basePrice: Number(v.basePrice ?? v.price ?? 0),
+    baseCurrency: v.baseCurrency || 'BRL',
+    targetCurrency: v.targetCurrency || 'BRL',
     km: v.mileage,
     transmission: v.transmission,
     fuel: v.fuelType,
@@ -102,20 +148,22 @@ function mapVehicle(v) {
     color: v.color,
     stock: v.stock,
     description: v.description || '',
-    image: v.imageUrl || '',
-    images: v.imageUrl ? [v.imageUrl] : [],
+    image: imageUrl,
+    images: imageUrl ? [imageUrl] : [],
     plate: v.plate,
     featured: false,
   };
 }
 
 function mapVehicleToApi(v) {
+  const plate = v.plate?.trim().toUpperCase() || `JP${Date.now().toString().slice(-6)}`;
   return {
-    name: v.name,
-    brand: v.brand,
-    model: v.model,
+    name: v.name?.trim(),
+    brand: v.brand?.trim(),
+    model: v.model?.trim(),
     yearModel: Number(v.year),
     price: Number(v.price),
+    baseCurrency: 'BRL',
     mileage: Number(v.km),
     transmission: v.transmission,
     fuelType: v.fuel,
@@ -123,8 +171,29 @@ function mapVehicleToApi(v) {
     color: v.color,
     stock: Number(v.stock),
     description: v.description || '',
-    imageUrl: v.image || '',
-    plate: v.plate || `JP${Date.now().toString().slice(-6)}`,
+    imageUrl: v.image?.trim() || '',
+    plate,
+  };
+}
+
+function mapOrder(order, sourceVehicles = []) {
+  const items = (order.items || []).map((item) => ({
+    id: String(item.productId),
+    name: item.productName,
+    quantity: item.quantity,
+    price: Number(item.totalPrice ?? item.unitPrice ?? 0),
+    currency: item.currency || order.displayCurrency || order.currency || 'BRL',
+  }));
+
+  const fallbackTotal = sourceVehicles.reduce((sum, vehicle) => sum + Number(vehicle.price || 0), 0);
+
+  return {
+    id: String(order.id),
+    status: order.status || 'CREATED',
+    items: items.length > 0 ? items : sourceVehicles,
+    total: Number(order.displayTotalAmount ?? order.totalAmount ?? fallbackTotal),
+    currency: order.displayCurrency || order.currency || 'BRL',
+    date: order.createdAt ? new Date(order.createdAt).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR'),
   };
 }
 

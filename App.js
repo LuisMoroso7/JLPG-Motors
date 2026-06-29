@@ -4,10 +4,16 @@ import { StatusBar } from 'expo-status-bar';
 import AppNavigator from './src/navigation/AppNavigator';
 import { initialVehicles } from './src/data/vehicles';
 import {
-  apiLogin, apiRegister, apiLogout,
-  apiGetVehicles, apiCreateVehicle, apiUpdateVehicle, apiDeleteVehicle,
-  apiToggleFavorite, apiGetFavorites,
-  apiStartNegotiation, apiGetMyNegotiations, apiCloseNegotiation,
+  apiLoadSession,
+  apiLogin,
+  apiRegister,
+  apiLogout,
+  apiGetVehicles,
+  apiCreateVehicle,
+  apiUpdateVehicle,
+  apiDeleteVehicle,
+  apiCreateOrder,
+  apiGetOrders,
 } from './src/services/api';
 
 export default function App() {
@@ -23,66 +29,71 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [backendOnline, setBackendOnline] = useState(false);
 
-  // Carregar veículos do back quando logar
   useEffect(() => {
-    if (user) loadVehiclesFromBack();
+    let active = true;
+
+    async function restoreSession() {
+      try {
+        const savedUser = await apiLoadSession();
+        if (active && savedUser) setUser(savedUser);
+      } catch (e) {}
+    }
+
+    restoreSession();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      loadVehiclesFromBack();
+      loadOrdersFromBack();
+    }
   }, [user]);
 
   async function loadVehiclesFromBack() {
     try {
       const backVehicles = await apiGetVehicles();
-      if (backVehicles.length > 0) {
-        setVehicles(backVehicles);
-        setBackendOnline(true);
-      }
-      // Se vazio, mantém os veículos mockados
+      setBackendOnline(true);
+      if (backVehicles.length > 0) setVehicles(backVehicles);
     } catch (e) {
+      setBackendOnline(false);
       console.log('Back offline, usando dados locais');
     }
+  }
+
+  async function loadOrdersFromBack() {
+    try {
+      const backOrders = await apiGetOrders('BRL');
+      setOrders(backOrders);
+    } catch (e) {}
   }
 
   async function handleLogin(email, password) {
     try {
       const data = await apiLogin(email, password);
-      return {
-        id: data.id,
-        name: data.username,
-        email: data.email,
-        role: data.role === 'ADMIN' ? 'ADMIN' : 'USER',
-      };
+      return data.user;
     } catch (e) {
-      // Fallback para login local se back offline
-      const isAdmin = email.toLowerCase() === 'adm@jlpg.com' && password === 'senha123';
-      if (email.includes('@') && password.length >= 6) {
-        return {
-          name: isAdmin ? 'Administrador JLPG' : 'Cliente JLPG',
-          email,
-          role: isAdmin ? 'ADMIN' : 'USER',
-        };
-      }
-      throw new Error('Usuário ou senha inválidos!');
+      throw new Error(e.message || 'Usuario ou senha invalidos.');
     }
   }
 
   async function handleRegister(data) {
-    try {
-      await apiRegister(data);
-    } catch (e) {
-      console.log('Register fallback local');
-    }
-    return {
-      name: data.username || data.name,
+    await apiRegister({
+      username: data.username || data.name,
       email: data.email,
-      role: 'USER',
-    };
+      password: data.password,
+    });
+
+    const loginData = await apiLogin(data.email, data.password);
+    return loginData.user;
   }
 
   function setUserAndLoad(userData) {
     setUser(userData);
   }
 
-  function logout() {
-    apiLogout();
+  async function logout() {
+    await apiLogout();
     setUser(null);
     setFavorites([]);
     setProposal([]);
@@ -90,48 +101,37 @@ export default function App() {
   }
 
   function toggleFavorite(vehicleId) {
-    setFavorites((c) =>
-      c.includes(vehicleId) ? c.filter((id) => id !== vehicleId) : [...c, vehicleId]
+    setFavorites((current) =>
+      current.includes(vehicleId) ? current.filter((id) => id !== vehicleId) : [...current, vehicleId]
     );
-    // Sincroniza com back em background
-    if (backendOnline) apiToggleFavorite(vehicleId).catch(() => {});
   }
 
   function addToProposal(vehicle) {
-    setProposal((c) => {
-      if (c.some((i) => i.id === vehicle.id)) {
-        Alert.alert('Já adicionado', `${vehicle.name} já está na proposta.`);
-        return c;
+    setProposal((current) => {
+      if (current.some((item) => item.id === vehicle.id)) {
+        Alert.alert('Ja adicionado', `${vehicle.name} ja esta na proposta.`);
+        return current;
       }
-      Alert.alert('✅ Adicionado', `${vehicle.name} foi adicionado à proposta.`);
-      return [...c, vehicle];
+      Alert.alert('Adicionado', `${vehicle.name} foi adicionado a proposta.`);
+      return [...current, vehicle];
     });
   }
 
   function removeFromProposal(vehicleId) {
-    setProposal((c) => c.filter((i) => i.id !== vehicleId));
+    setProposal((current) => current.filter((item) => item.id !== vehicleId));
   }
 
   async function finishOrder() {
-    const total = proposal.reduce((s, i) => s + i.price, 0);
-    
-    // Tenta criar negociação no back para cada veículo
-    if (backendOnline) {
-      for (const vehicle of proposal) {
-        try {
-          await apiStartNegotiation(vehicle.id);
-        } catch (e) {}
-      }
-    }
+    if (proposal.length === 0) return;
 
-    setOrders((c) => [{
-      id: String(Date.now()).slice(-6),
-      items: proposal,
-      total,
-      date: new Date().toLocaleDateString('pt-BR'),
-    }, ...c]);
-    setProposal([]);
-    Alert.alert('🎉 Solicitação gerada!', 'A JLPG Motors entrará em contato para continuar a negociação.');
+    try {
+      const createdOrder = await apiCreateOrder(proposal, 'BRL');
+      setOrders((current) => [createdOrder, ...current]);
+      setProposal([]);
+      Alert.alert('Solicitacao gerada!', 'A JLPG Motors entrara em contato para continuar a negociacao.');
+    } catch (e) {
+      Alert.alert('Erro ao gerar solicitacao', e.message || 'Nao foi possivel enviar a proposta para o backend.');
+    }
   }
 
   async function saveVehicle(vehicle) {
@@ -147,67 +147,60 @@ export default function App() {
     };
 
     try {
-      if (backendOnline) {
-        if (normalized.id && vehicles.find((v) => v.id === normalized.id)) {
-          const updated = await apiUpdateVehicle(normalized.id, normalized);
-          setVehicles((c) => c.map((v) => v.id === normalized.id ? { ...v, ...updated } : v));
-        } else {
-          const created = await apiCreateVehicle(normalized);
-          setVehicles((c) => [created, ...c]);
-        }
-        return;
+      if (normalized.id && vehicles.find((item) => item.id === normalized.id)) {
+        const updated = await apiUpdateVehicle(normalized.id, normalized);
+        setVehicles((current) => current.map((item) => item.id === normalized.id ? { ...item, ...updated } : item));
+      } else {
+        const created = await apiCreateVehicle(normalized);
+        setVehicles((current) => [created, ...current]);
       }
-    } catch (e) {}
-
-    // Fallback local
-    setVehicles((c) => {
-      if (normalized.id && c.find((v) => v.id === normalized.id)) {
-        return c.map((v) => v.id === normalized.id ? { ...v, ...normalized } : v);
-      }
-      return [{ ...normalized, id: String(Date.now()) }, ...c];
-    });
+    } catch (e) {
+      throw new Error(e.message || 'Nao foi possivel salvar o veiculo no backend.');
+    }
   }
 
   async function deleteVehicle(vehicleId) {
-    if (backendOnline) {
-      try {
-        await apiDeleteVehicle(vehicleId);
-      } catch (e) {}
+    try {
+      await apiDeleteVehicle(vehicleId);
+    } catch (e) {
+      Alert.alert('Erro ao remover veiculo', e.message || 'Nao foi possivel remover o veiculo no backend.');
+      return;
     }
-    setVehicles((c) => c.filter((v) => v.id !== vehicleId));
-    setFavorites((c) => c.filter((id) => id !== vehicleId));
-    setProposal((c) => c.filter((v) => v.id !== vehicleId));
-    setCompareVehicles((c) => c.filter((v) => v.id !== vehicleId));
-    setRecentlyViewed((c) => c.filter((v) => v.id !== vehicleId));
+
+    setVehicles((current) => current.filter((item) => item.id !== vehicleId));
+    setFavorites((current) => current.filter((id) => id !== vehicleId));
+    setProposal((current) => current.filter((item) => item.id !== vehicleId));
+    setCompareVehicles((current) => current.filter((item) => item.id !== vehicleId));
+    setRecentlyViewed((current) => current.filter((item) => item.id !== vehicleId));
   }
 
   function addRecentlyViewed(vehicle) {
-    setRecentlyViewed((c) => [vehicle, ...c.filter((v) => v.id !== vehicle.id)].slice(0, 5));
+    setRecentlyViewed((current) => [vehicle, ...current.filter((item) => item.id !== vehicle.id)].slice(0, 5));
   }
 
-  function saveTestDrive(td) {
-    setTestDrives((c) => [td, ...c]);
+  function saveTestDrive(testDrive) {
+    setTestDrives((current) => [testDrive, ...current]);
   }
 
   function updateTestDriveStatus(id, status) {
-    setTestDrives((c) => c.map((td) => td.id === id ? { ...td, status } : td));
-    const msg = status === 'approved' ? '✅ Test drive confirmado!' : '❌ Test drive recusado.';
-    Alert.alert(msg, status === 'approved' ? 'O cliente será notificado.' : 'Agendamento cancelado.');
+    setTestDrives((current) => current.map((testDrive) => testDrive.id === id ? { ...testDrive, status } : testDrive));
+    const msg = status === 'approved' ? 'Test drive confirmado!' : 'Test drive recusado.';
+    Alert.alert(msg, status === 'approved' ? 'O cliente sera notificado.' : 'Agendamento cancelado.');
   }
 
   function addPriceAlert(alert) {
-    setPriceAlerts((c) => {
-      if (c.find((a) => a.vehicleId === alert.vehicleId)) {
-        Alert.alert('Alerta já existe', 'Você já tem um alerta para este veículo.');
-        return c;
+    setPriceAlerts((current) => {
+      if (current.find((item) => item.vehicleId === alert.vehicleId)) {
+        Alert.alert('Alerta ja existe', 'Voce ja tem um alerta para este veiculo.');
+        return current;
       }
-      Alert.alert('🔔 Alerta criado!', `Você será notificado quando ${alert.vehicleName} baixar para ${alert.targetPriceFormatted}.`);
-      return [{ ...alert, id: String(Date.now()) }, ...c];
+      Alert.alert('Alerta criado!', `Voce sera notificado quando ${alert.vehicleName} baixar para ${alert.targetPriceFormatted}.`);
+      return [{ ...alert, id: String(Date.now()) }, ...current];
     });
   }
 
   function removePriceAlert(alertId) {
-    setPriceAlerts((c) => c.filter((a) => a.id !== alertId));
+    setPriceAlerts((current) => current.filter((alert) => alert.id !== alertId));
   }
 
   return (

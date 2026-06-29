@@ -8,43 +8,55 @@ import Screen from '../components/Screen';
 import PrimaryButton from '../components/PrimaryButton';
 import { colors } from '../theme/colors';
 
-export default function RegisterScreen({ navigation, setUser }) {
+export default function RegisterScreen({ navigation, setUser, handleRegister }) {
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', confirmPassword: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
   function update(field, value) {
-    setForm((f) => ({ ...f, [field]: value }));
-    setErrors((e) => ({ ...e, [field]: null }));
+    setForm((current) => ({ ...current, [field]: value }));
+    setErrors((current) => ({ ...current, [field]: null }));
   }
 
   function validate() {
     const newErrors = {};
     if (!form.name.trim() || form.name.trim().length < 3) newErrors.name = 'Nome deve ter ao menos 3 caracteres';
-    if (!form.email.trim()) newErrors.email = 'E-mail é obrigatório';
-    else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = 'E-mail inválido';
-    if (!form.phone.trim()) newErrors.phone = 'Telefone é obrigatório';
-    if (!form.password) newErrors.password = 'Senha é obrigatória';
-    else if (form.password.length < 6) newErrors.password = 'Mínimo 6 caracteres';
-    if (form.password !== form.confirmPassword) newErrors.confirmPassword = 'Senhas não coincidem';
+    if (!form.email.trim()) newErrors.email = 'E-mail e obrigatorio';
+    else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = 'E-mail invalido';
+    if (!form.phone.trim()) newErrors.phone = 'Telefone e obrigatorio';
+    if (!form.password) newErrors.password = 'Senha e obrigatoria';
+    else if (form.password.length < 6) newErrors.password = 'Minimo 6 caracteres';
+    if (form.password !== form.confirmPassword) newErrors.confirmPassword = 'Senhas nao coincidem';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
 
-  async function handleRegister() {
+  async function handleSubmit() {
     if (!validate()) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setUser({ name: form.name, email: form.email, phone: form.phone, role: 'CLIENT' });
-    setLoading(false);
+
+    try {
+      const userData = await handleRegister({
+        username: form.name.trim(),
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        password: form.password,
+      });
+      setUser({ ...userData, phone: form.phone.trim() });
+    } catch (e) {
+      Alert.alert('Erro no cadastro', e.message || 'Nao foi possivel criar sua conta.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   const fields = [
     { key: 'name', label: 'Nome completo', icon: 'person-outline', placeholder: 'Seu nome', keyboard: 'default' },
     { key: 'email', label: 'E-mail', icon: 'mail-outline', placeholder: 'seu@email.com', keyboard: 'email-address' },
     { key: 'phone', label: 'Telefone', icon: 'call-outline', placeholder: '(00) 00000-0000', keyboard: 'phone-pad' },
-    { key: 'password', label: 'Senha', icon: 'lock-closed-outline', placeholder: 'Mínimo 6 caracteres', secure: true },
+    { key: 'password', label: 'Senha', icon: 'lock-closed-outline', placeholder: 'Minimo 6 caracteres', secure: true },
     { key: 'confirmPassword', label: 'Confirmar senha', icon: 'shield-checkmark-outline', placeholder: 'Repita a senha', secure: true },
   ];
 
@@ -57,7 +69,7 @@ export default function RegisterScreen({ navigation, setUser }) {
               <Ionicons name="person-add-outline" size={28} color={colors.primary} />
             </View>
             <Text style={styles.title}>Criar cadastro</Text>
-            <Text style={styles.subtitle}>Preencha seus dados para acompanhar propostas e histórico de compras.</Text>
+            <Text style={styles.subtitle}>Preencha seus dados para acompanhar propostas e historico de compras.</Text>
           </View>
 
           <View style={styles.card}>
@@ -68,7 +80,7 @@ export default function RegisterScreen({ navigation, setUser }) {
                   <Ionicons name={icon} size={18} color={colors.muted} style={styles.inputIcon} />
                   <TextInput
                     value={form[key]}
-                    onChangeText={(v) => update(key, v)}
+                    onChangeText={(value) => update(key, value)}
                     placeholder={placeholder}
                     placeholderTextColor={colors.muted}
                     keyboardType={keyboard || 'default'}
@@ -86,12 +98,12 @@ export default function RegisterScreen({ navigation, setUser }) {
               </View>
             ))}
 
-            <PrimaryButton title="Finalizar cadastro" onPress={handleRegister} style={styles.btn} loading={loading} />
+            <PrimaryButton title="Finalizar cadastro" onPress={handleSubmit} style={styles.btn} loading={loading} />
           </View>
 
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backLink}>
             <Ionicons name="arrow-back" size={16} color={colors.muted} />
-            <Text style={styles.backText}>Já tenho uma conta</Text>
+            <Text style={styles.backText}>Ja tenho uma conta</Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
