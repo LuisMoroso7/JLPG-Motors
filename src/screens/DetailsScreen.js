@@ -9,6 +9,7 @@ import Screen from '../components/Screen';
 import PrimaryButton from '../components/PrimaryButton';
 import { colors } from '../theme/colors';
 import { formatCurrency, calcFinancing } from '../utils/formatCurrency';
+import { apiConvertCurrency } from '../services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MONTHS_OPTIONS = [12, 24, 36, 48, 60];
@@ -23,16 +24,61 @@ function Spec({ icon, label, value }) {
   );
 }
 
-export default function DetailsScreen({ route, navigation, vehicles, favorites, toggleFavorite, addToProposal, addRecentlyViewed, addPriceAlert }) {
-  const vehicle = vehicles.find((item) => item.id === route.params.vehicleId);
+export default function DetailsScreen({ route, navigation, vehicles, favorites, toggleFavorite, addToProposal, addRecentlyViewed, addPriceAlert, loadVehicleDetails }) {
+  const initialVehicle = vehicles.find((item) => item.id === route.params.vehicleId);
+  const [remoteVehicle, setRemoteVehicle] = useState(null);
+  const vehicle = remoteVehicle || initialVehicle;
   const [activePhoto, setActivePhoto] = useState(0);
   const [downPayment, setDownPayment] = useState('');
   const [months, setMonths] = useState(48);
   const [showFinancing, setShowFinancing] = useState(false);
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [alertPrice, setAlertPrice] = useState('');
+  const [priceConversions, setPriceConversions] = useState([]);
+
+  React.useEffect(() => {
+    let active = true;
+
+    async function loadDetails() {
+      setRemoteVehicle(null);
+      try {
+        const updated = await loadVehicleDetails?.(route.params.vehicleId);
+        if (active && updated) setRemoteVehicle(updated);
+      } catch (e) {}
+    }
+
+    loadDetails();
+    return () => { active = false; };
+  }, [route.params.vehicleId]);
 
   React.useEffect(() => {
     if (vehicle) addRecentlyViewed?.(vehicle);
   }, [vehicle?.id]);
+
+  React.useEffect(() => {
+    let active = true;
+
+    async function loadConversions() {
+      if (!vehicle?.price) {
+        setPriceConversions([]);
+        return;
+      }
+
+      try {
+        const source = vehicle.targetCurrency || 'BRL';
+        const data = await Promise.all([
+          apiConvertCurrency({ source, target: 'USD', amount: vehicle.price }),
+          apiConvertCurrency({ source, target: 'EUR', amount: vehicle.price }),
+        ]);
+        if (active) setPriceConversions(data);
+      } catch (e) {
+        if (active) setPriceConversions([]);
+      }
+    }
+
+    loadConversions();
+    return () => { active = false; };
+  }, [vehicle?.id, vehicle?.price, vehicle?.targetCurrency]);
 
   if (!vehicle) {
     return (
@@ -50,9 +96,6 @@ export default function DetailsScreen({ route, navigation, vehicles, favorites, 
   const installment = calcFinancing({ price: vehicle.price, downPayment: downVal, months });
 
 
-  const [showAlertModal, setShowAlertModal] = useState(false);
-  const [alertPrice, setAlertPrice] = useState('');
-
   function handlePriceAlert() {
     setAlertPrice(String(Math.round(vehicle.price * 0.9)));
     setShowAlertModal(true);
@@ -66,16 +109,16 @@ export default function DetailsScreen({ route, navigation, vehicles, favorites, 
       vehicleName: vehicle.name,
       currentPrice: vehicle.price,
       targetPrice,
-      targetPriceFormatted: formatCurrency(targetPrice),
+      currency: vehicle.targetCurrency || 'BRL',
+      targetPriceFormatted: formatCurrency(targetPrice, vehicle.targetCurrency || 'BRL'),
     });
     setShowAlertModal(false);
-    Alert.alert('🔔 Alerta criado!', `Você será notificado quando ${vehicle.name} baixar para ${formatCurrency(targetPrice)}.`);
   }
 
   async function handleShare() {
     try {
       await Share.share({
-        message: `🚗 ${vehicle.name} — ${formatCurrency(vehicle.price)}\n${vehicle.year} | ${vehicle.km.toLocaleString('pt-BR')} km | ${vehicle.transmission}\n\nVeja na JLPG Motors!`,
+        message: `🚗 ${vehicle.name} — ${formatCurrency(vehicle.price, vehicle.targetCurrency || 'BRL')}\n${vehicle.year} | ${Number(vehicle.km || 0).toLocaleString('pt-BR')} km | ${vehicle.transmission}\n\nVeja na JLPG Motors!`,
       });
     } catch (e) {}
   }
@@ -128,7 +171,17 @@ export default function DetailsScreen({ route, navigation, vehicles, favorites, 
 
         <View style={styles.content}>
           <Text style={styles.vehicleName}>{vehicle.name}</Text>
-          <Text style={styles.price}>{formatCurrency(vehicle.price)}</Text>
+          <Text style={styles.price}>{formatCurrency(vehicle.price, vehicle.targetCurrency || 'BRL')}</Text>
+          {priceConversions.length > 0 && (
+            <View style={styles.currencyRow}>
+              {priceConversions.map((item) => (
+                <View key={item.target} style={styles.currencyPill}>
+                  <Text style={styles.currencyLabel}>{item.target}</Text>
+                  <Text style={styles.currencyValue}>{formatCurrency(item.convertedAmount, item.target)}</Text>
+                </View>
+              ))}
+            </View>
+          )}
           <Text style={styles.description}>{vehicle.description}</Text>
 
           {/* Specs */}
@@ -216,7 +269,7 @@ export default function DetailsScreen({ route, navigation, vehicles, favorites, 
                       <LinearGradient colors={['transparent', 'rgba(10,10,15,0.9)']} style={StyleSheet.absoluteFill} />
                       <View style={styles.similarInfo}>
                         <Text style={styles.similarName} numberOfLines={1}>{v.name}</Text>
-                        <Text style={styles.similarPrice}>{formatCurrency(v.price)}</Text>
+                        <Text style={styles.similarPrice}>{formatCurrency(v.price, v.targetCurrency || 'BRL')}</Text>
                       </View>
                     </TouchableOpacity>
                   ))}
@@ -240,7 +293,7 @@ export default function DetailsScreen({ route, navigation, vehicles, favorites, 
             <View style={styles.alertModalCard}>
               <Ionicons name="notifications-outline" size={28} color={colors.primary} />
               <Text style={styles.alertModalTitle}>Criar alerta de preço</Text>
-              <Text style={styles.alertModalSub}>Preço atual: {formatCurrency(vehicle.price)}</Text>
+              <Text style={styles.alertModalSub}>Preço atual: {formatCurrency(vehicle.price, vehicle.targetCurrency || 'BRL')}</Text>
               <Text style={styles.alertModalLabel}>Digite o preço alvo (R$)</Text>
               <TextInput
                 value={alertPrice}
@@ -284,6 +337,10 @@ const styles = StyleSheet.create({
   content: { padding: 20 },
   vehicleName: { color: colors.text, fontSize: 26, fontWeight: '900', marginBottom: 6 },
   price: { color: colors.primary, fontSize: 30, fontWeight: '900', marginBottom: 14 },
+  currencyRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
+  currencyPill: { backgroundColor: colors.card, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 8 },
+  currencyLabel: { color: colors.muted, fontSize: 10, fontWeight: '800' },
+  currencyValue: { color: colors.text, fontSize: 13, fontWeight: '900', marginTop: 2 },
   description: { color: colors.textSecondary, lineHeight: 22, fontSize: 14, marginBottom: 22 },
   sectionTitle: { color: colors.text, fontSize: 18, fontWeight: '900', marginBottom: 14 },
   specGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
@@ -335,6 +392,3 @@ const styles = StyleSheet.create({
   backBtn: { marginTop: 8 },
 });
 
-// PATCH: exportar função para alerta de preço — adicione na DetailsScreen
-// na seção de ações, antes de finishBtn, adicione:
-// <PrimaryButton title="🔔 Criar alerta de preço" variant="outline" onPress={handlePriceAlert} />

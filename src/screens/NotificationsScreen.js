@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
@@ -20,15 +20,39 @@ const ICONS = {
   promo: { name: 'pricetag-outline', color: colors.primary },
 };
 
-export default function NotificationsScreen() {
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+export default function NotificationsScreen({ orders = [], priceAlerts = [] }) {
+  const [readIds, setReadIds] = useState([]);
+  const notifications = useMemo(() => {
+    const orderNotifications = orders.slice(0, 5).map((order) => ({
+      id: `order-${order.id}`,
+      type: 'order',
+      title: order.status === 'LOCAL' ? 'Solicitação salva localmente' : 'Solicitação enviada',
+      body: order.status === 'LOCAL'
+        ? 'Seu pedido foi salvo no app e pode ser consultado no histórico.'
+        : 'Nossa equipe recebeu sua proposta pelo backend e entrará em contato.',
+      time: order.date || 'Agora',
+      read: false,
+    }));
+
+    const priceNotifications = priceAlerts.slice(0, 5).map((alert) => ({
+      id: `price-${alert.id}`,
+      type: 'price',
+      title: 'Alerta de preço ativo',
+      body: `${alert.vehicleName} será monitorado até ${alert.targetPriceFormatted || 'o valor desejado'}.`,
+      time: 'Ativo',
+      read: false,
+    }));
+
+    return [...orderNotifications, ...priceNotifications, ...MOCK_NOTIFICATIONS]
+      .map((item) => readIds.includes(item.id) ? { ...item, read: true } : item);
+  }, [orders, priceAlerts, readIds]);
 
   function markAllRead() {
-    setNotifications((n) => n.map((item) => ({ ...item, read: true })));
+    setReadIds(notifications.map((item) => item.id));
   }
 
   function markRead(id) {
-    setNotifications((n) => n.map((item) => item.id === id ? { ...item, read: true } : item));
+    setReadIds((current) => current.includes(id) ? current : [...current, id]);
   }
 
   const unread = notifications.filter((n) => !n.read).length;

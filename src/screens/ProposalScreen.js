@@ -10,12 +10,13 @@ import { formatCurrency } from '../utils/formatCurrency';
 
 export default function ProposalScreen({ navigation, proposal, removeFromProposal, finishOrder, user}) {
   const total = proposal.reduce((sum, item) => sum + item.price, 0);
+  const currency = proposal[0]?.targetCurrency || proposal[0]?.currency || 'BRL';
 
   function handleFinish() {
     if (proposal.length === 0) { Alert.alert('Proposta vazia', 'Adicione pelo menos um veículo à proposta.'); return; }
     Alert.alert(
       'Confirmar solicitação',
-      `Deseja confirmar a proposta de ${formatCurrency(total)}?`,
+      `Deseja confirmar a proposta de ${formatCurrency(total, currency)}?`,
       [{ text: 'Cancelar', style: 'cancel' }, { text: 'Confirmar', onPress: finishOrder }]
     );
   }
@@ -23,8 +24,8 @@ export default function ProposalScreen({ navigation, proposal, removeFromProposa
   async function handleShareProposal() {
     if (proposal.length === 0) { Alert.alert('Proposta vazia', 'Adicione veículos antes de compartilhar.'); return; }
     const date = new Date().toLocaleDateString('pt-BR');
-    const itemsList = proposal.map((v, i) => `${i + 1}. ${v.name} (${v.year}) — ${formatCurrency(v.price)}`).join('\n');
-    const message = `🚗 *Proposta JLPG Motors*\nCliente: ${user?.name || 'Cliente'}\nData: ${date}\n\n${itemsList}\n\n💰 *Total estimado: ${formatCurrency(total)}*\n\nNossa equipe entrará em contato para negociação.\nJLPG Motors — Passo Fundo, RS`;
+    const itemsList = proposal.map((v, i) => `${i + 1}. ${v.name} (${v.year}) — ${formatCurrency(v.price, v.targetCurrency || currency)}`).join('\n');
+    const message = `🚗 *Proposta JLPG Motors*\nCliente: ${user?.name || 'Cliente'}\nData: ${date}\n\n${itemsList}\n\n💰 *Total estimado: ${formatCurrency(total, currency)}*\n\nNossa equipe entrará em contato para negociação.\nJLPG Motors — Passo Fundo, RS`;
     try {
       await Share.share({ message, title: 'Proposta JLPG Motors' });
     } catch (e) {}
@@ -72,7 +73,7 @@ export default function ProposalScreen({ navigation, proposal, removeFromProposa
               <View style={styles.info}>
                 <Text style={[styles.itemName, { color: colors.text }]} numberOfLines={2}>{item.name}</Text>
                 <Text style={[styles.itemMeta, { color: colors.muted }]}>{item.year} • {item.transmission}</Text>
-                <Text style={[styles.itemPrice, { color: colors.primary }]}>{formatCurrency(item.price)}</Text>
+                <Text style={[styles.itemPrice, { color: colors.primary }]}>{formatCurrency(item.price, item.targetCurrency || currency)}</Text>
                 <TouchableOpacity onPress={() => removeFromProposal(item.id)} style={styles.removeBtn} accessibilityLabel={`Remover ${item.name} da proposta`}>
                   <Ionicons name="trash-outline" size={14} color={colors.danger} />
                   <Text style={[styles.removeText, { color: colors.danger }]}>Remover</Text>
@@ -97,7 +98,7 @@ export default function ProposalScreen({ navigation, proposal, removeFromProposa
         <View style={[styles.footer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
           <View style={styles.footerRow}>
             <Text style={[styles.totalLabel, { color: colors.muted }]}>Valor estimado total</Text>
-            <Text style={[styles.total, { color: colors.primary }]}>{formatCurrency(total)}</Text>
+            <Text style={[styles.total, { color: colors.primary }]}>{formatCurrency(total, currency)}</Text>
           </View>
           <Text style={[styles.footerNote, { color: colors.muted }]}>
             Nossa equipe entrará em contato para negociação.

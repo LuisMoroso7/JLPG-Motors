@@ -2,19 +2,62 @@ import React, { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import AppNavigator from './src/navigation/AppNavigator';
+import OfflineBanner from './src/components/OfflineBanner';
 import { initialVehicles } from './src/data/vehicles';
 import {
   apiLoadSession,
   apiLogin,
   apiRegister,
   apiLogout,
+  apiGetGreeting,
   apiGetVehicles,
+  apiGetVehicleById,
   apiCreateVehicle,
   apiUpdateVehicle,
   apiDeleteVehicle,
   apiCreateOrder,
   apiGetOrders,
 } from './src/services/api';
+import {
+  loadPreferences,
+  savePreferences,
+  loadUserState,
+  saveUserState,
+} from './src/services/localStore';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isBackendId(id) {
+  return UUID_RE.test(String(id || ''));
+}
+
+function mergeOrders(remoteOrders, currentOrders) {
+  const localOrders = currentOrders.filter((order) => order.local || order.status === 'LOCAL');
+  const ids = new Set(remoteOrders.map((order) => order.id));
+  return [...remoteOrders, ...localOrders.filter((order) => !ids.has(order.id))];
+}
+
+function buildLocalOrder(vehicles) {
+  const createdAt = new Date();
+  const items = vehicles.map((vehicle) => ({
+    id: String(vehicle.id),
+    name: vehicle.name,
+    quantity: vehicle.quantity || 1,
+    price: Number(vehicle.price || 0),
+    currency: vehicle.targetCurrency || 'BRL',
+  }));
+
+  return {
+    id: `LOCAL-${createdAt.getTime()}`,
+    local: true,
+    status: 'LOCAL',
+    items,
+    total: items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    currency: 'BRL',
+    createdAt: createdAt.toISOString(),
+    date: createdAt.toLocaleDateString('pt-BR'),
+  };
+}
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -28,44 +71,137 @@ export default function App() {
   const [priceAlerts, setPriceAlerts] = useState([]);
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [backendOnline, setBackendOnline] = useState(false);
+  const [backendChecked, setBackendChecked] = useState(false);
+  const [backendMessage, setBackendMessage] = useState('');
+  const [loadingVehicles, setLoadingVehicles] = useState(false);
+  const [usingLocalVehicles, setUsingLocalVehicles] = useState(true);
+  const [localReady, setLocalReady] = useState(false);
 
   useEffect(() => {
     let active = true;
 
-    async function restoreSession() {
+    async function boot() {
       try {
-        const savedUser = await apiLoadSession();
+        const [preferences, savedUser] = await Promise.all([
+          loadPreferences(),
+          apiLoadSession().catch(() => null),
+        ]);
+        if (!active) return;
+
+        setShowOnboarding(preferences.showOnboarding);
         if (active && savedUser) setUser(savedUser);
       } catch (e) {}
+
+      loadBackendStatus();
     }
 
-    restoreSession();
+    boot();
     return () => { active = false; };
   }, []);
 
   useEffect(() => {
     if (user) {
+      hydrateLocalState(user);
       loadVehiclesFromBack();
       loadOrdersFromBack();
+    } else {
+      setLocalReady(false);
     }
-  }, [user]);
+  }, [user?.id, user?.email]);
+
+  useEffect(() => {
+    if (!user || !localReady) return;
+
+    saveUserState(user, {
+      favorites,
+      proposal,
+      orders,
+      compareVehicles,
+      recentlyViewed,
+      testDrives,
+      priceAlerts,
+    }).catch(() => {});
+  }, [user, localReady, favorites, proposal, orders, compareVehicles, recentlyViewed, testDrives, priceAlerts]);
+
+  async function hydrateLocalState(userData) {
+    setLocalReady(false);
+    try {
+      const state = await loadUserState(userData);
+      setFavorites(state.favorites);
+      setProposal(state.proposal);
+      setOrders(state.orders);
+      setCompareVehicles(state.compareVehicles);
+      setRecentlyViewed(state.recentlyViewed);
+      setTestDrives(state.testDrives);
+      setPriceAlerts(state.priceAlerts);
+    } finally {
+      setLocalReady(true);
+    }
+  }
+
+  async function finishOnboarding() {
+    setShowOnboarding(false);
+    await savePreferences({ showOnboarding: false });
+  }
+
+  async function loadBackendStatus() {
+    try {
+      const message = await apiGetGreeting();
+      setBackendMessage(message);
+      setBackendOnline(true);
+    } catch (e) {
+      setBackendOnline(false);
+    } finally {
+      setBackendChecked(true);
+    }
+  }
 
   async function loadVehiclesFromBack() {
+    setLoadingVehicles(true);
     try {
       const backVehicles = await apiGetVehicles();
       setBackendOnline(true);
-      if (backVehicles.length > 0) setVehicles(backVehicles);
+      setBackendChecked(true);
+      if (backVehicles.length > 0) {
+        setVehicles(backVehicles);
+        setUsingLocalVehicles(false);
+      } else {
+        setVehicles(initialVehicles);
+        setUsingLocalVehicles(true);
+      }
+      return backVehicles;
     } catch (e) {
       setBackendOnline(false);
+      setBackendChecked(true);
+      setUsingLocalVehicles(true);
       console.log('Back offline, usando dados locais');
+      return null;
+    } finally {
+      setLoadingVehicles(false);
     }
   }
 
   async function loadOrdersFromBack() {
     try {
       const backOrders = await apiGetOrders('BRL');
-      setOrders(backOrders);
+      setOrders((current) => mergeOrders(backOrders, current));
+      return backOrders;
     } catch (e) {}
+    return null;
+  }
+
+  async function loadVehicleDetails(vehicleId) {
+    if (!isBackendId(vehicleId)) {
+      return vehicles.find((item) => item.id === vehicleId) || null;
+    }
+
+    const vehicle = await apiGetVehicleById(vehicleId, 'BRL');
+    setVehicles((current) => (
+      current.some((item) => item.id === vehicle.id)
+        ? current.map((item) => item.id === vehicle.id ? { ...item, ...vehicle } : item)
+        : [vehicle, ...current]
+    ));
+    return vehicle;
   }
 
   async function handleLogin(email, password) {
@@ -98,6 +234,10 @@ export default function App() {
     setFavorites([]);
     setProposal([]);
     setOrders([]);
+    setCompareVehicles([]);
+    setRecentlyViewed([]);
+    setTestDrives([]);
+    setPriceAlerts([]);
   }
 
   function toggleFavorite(vehicleId) {
@@ -124,11 +264,25 @@ export default function App() {
   async function finishOrder() {
     if (proposal.length === 0) return;
 
+    if (!backendOnline || !proposal.every((vehicle) => isBackendId(vehicle.id))) {
+      const localOrder = buildLocalOrder(proposal);
+      setOrders((current) => [localOrder, ...current]);
+      setProposal([]);
+      Alert.alert(
+        'Solicitacao salva!',
+        backendOnline
+          ? 'Estes veiculos estao em dados locais. A solicitacao ficou salva no app.'
+          : 'Backend indisponivel no momento. A solicitacao ficou salva no app.'
+      );
+      return;
+    }
+
     try {
       const createdOrder = await apiCreateOrder(proposal, 'BRL');
       setOrders((current) => [createdOrder, ...current]);
       setProposal([]);
       Alert.alert('Solicitacao gerada!', 'A JLPG Motors entrara em contato para continuar a negociacao.');
+      loadOrdersFromBack();
     } catch (e) {
       Alert.alert('Erro ao gerar solicitacao', e.message || 'Nao foi possivel enviar a proposta para o backend.');
     }
@@ -154,6 +308,9 @@ export default function App() {
         const created = await apiCreateVehicle(normalized);
         setVehicles((current) => [created, ...current]);
       }
+      setUsingLocalVehicles(false);
+      setBackendOnline(true);
+      setBackendChecked(true);
     } catch (e) {
       throw new Error(e.message || 'Nao foi possivel salvar o veiculo no backend.');
     }
@@ -206,9 +363,10 @@ export default function App() {
   return (
     <>
       <StatusBar style="light" />
+      <OfflineBanner visible={backendChecked && !backendOnline} />
       <AppNavigator
         showOnboarding={showOnboarding}
-        finishOnboarding={() => setShowOnboarding(false)}
+        finishOnboarding={finishOnboarding}
         user={user}
         setUser={setUserAndLoad}
         handleLogin={handleLogin}
@@ -234,7 +392,14 @@ export default function App() {
         finishOrder={finishOrder}
         saveVehicle={saveVehicle}
         deleteVehicle={deleteVehicle}
+        refreshVehicles={loadVehiclesFromBack}
+        refreshOrders={loadOrdersFromBack}
+        loadVehicleDetails={loadVehicleDetails}
         backendOnline={backendOnline}
+        backendChecked={backendChecked}
+        backendMessage={backendMessage}
+        loadingVehicles={loadingVehicles}
+        usingLocalVehicles={usingLocalVehicles}
       />
     </>
   );

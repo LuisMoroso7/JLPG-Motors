@@ -6,36 +6,48 @@ import PrimaryButton from '../components/PrimaryButton';
 import FadeInView from '../components/FadeInView';
 import { colors } from '../theme/colors';
 import { formatCurrency } from '../utils/formatCurrency';
-import { apiGetAllNegotiations, apiCloseNegotiation } from '../services/api';
 
-export default function AdminScreen({ navigation, vehicles, deleteVehicle, user, testDrives = [], updateTestDriveStatus, orders = [] }) {
+function mapOrdersToNegotiations(orders) {
+  return orders.map((order) => {
+    const firstItem = order.items?.[0];
+    const isOpen = ['CREATED', 'LOCAL', 'OPEN'].includes(order.status);
+
+    return {
+      id: order.id,
+      userId: order.userId || 'cliente',
+      vehicleId: firstItem?.id,
+      vehicleName: order.items?.length > 1
+        ? `${firstItem?.name || 'Pedido'} +${order.items.length - 1}`
+        : firstItem?.name,
+      status: isOpen ? 'OPEN' : 'CLOSED',
+      createdAt: order.createdAt || order.date,
+      total: order.total,
+      currency: order.currency || 'BRL',
+      local: order.local,
+    };
+  });
+}
+
+export default function AdminScreen({ navigation, vehicles, deleteVehicle, user, testDrives = [], updateTestDriveStatus, orders = [], refreshOrders }) {
   const [tab, setTab] = useState('vehicles');
   const [search, setSearch] = useState('');
-  const [negotiations, setNegotiations] = useState([]);
+  const [negotiations, setNegotiations] = useState(mapOrdersToNegotiations(orders));
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    loadNegotiations();
+    refreshOrders?.();
     // Polling a cada 15 segundos para ver novas negociações
-    const interval = setInterval(loadNegotiations, 15000);
+    const interval = setInterval(() => refreshOrders?.(), 15000);
     return () => clearInterval(interval);
-  }, []);
+  }, [refreshOrders]);
+
+  useEffect(() => {
+    setNegotiations(mapOrdersToNegotiations(orders));
+  }, [orders]);
 
   async function loadNegotiations() {
-    try {
-      const data = await apiGetAllNegotiations();
-      setNegotiations(data);
-    } catch (e) {
-      // fallback: usa orders locais
-      setNegotiations(orders.map((o) => ({
-        id: o.id,
-        userId: 'local',
-        vehicleId: o.items?.[0]?.id,
-        vehicleName: o.items?.[0]?.name,
-        status: 'OPEN',
-        createdAt: o.date,
-      })));
-    }
+    await refreshOrders?.();
+    setNegotiations(mapOrdersToNegotiations(orders));
   }
 
   async function onRefresh() {
@@ -54,12 +66,9 @@ export default function AdminScreen({ navigation, vehicles, deleteVehicle, user,
           text: action === 'SOLD' ? 'Aprovar' : 'Recusar',
           style: action === 'SOLD' ? 'default' : 'destructive',
           onPress: async () => {
-            try {
-              await apiCloseNegotiation(negotiationId);
-              loadNegotiations();
-            } catch (e) {
-              setNegotiations((c) => c.map((n) => n.id === negotiationId ? { ...n, status: 'CLOSED' } : n));
-            }
+            setNegotiations((current) => current.map((item) => (
+              item.id === negotiationId ? { ...item, status: 'CLOSED', decision: action } : item
+            )));
           },
         },
       ]
@@ -182,7 +191,7 @@ export default function AdminScreen({ navigation, vehicles, deleteVehicle, user,
                   <View style={styles.vehicleInfo}>
                     <Text style={styles.vehicleName} numberOfLines={2}>{item.name}</Text>
                     <Text style={styles.vehicleMeta}>{item.year} • {item.km?.toLocaleString('pt-BR')} km</Text>
-                    <Text style={styles.vehiclePrice}>{formatCurrency(item.price)}</Text>
+                    <Text style={styles.vehiclePrice}>{formatCurrency(item.price, item.targetCurrency || 'BRL')}</Text>
                     <View style={styles.vehicleActions}>
                       <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('FormulárioVeículo', { vehicleId: item.id })}>
                         <Ionicons name="pencil-outline" size={14} color={colors.primary} />
@@ -231,6 +240,11 @@ export default function AdminScreen({ navigation, vehicles, deleteVehicle, user,
                 <Text style={styles.negotiationMeta}>
                   {item.vehicleName || `Veículo ID: ${String(item.vehicleId).slice(0, 8)}`}
                 </Text>
+                {item.total ? (
+                  <Text style={styles.negotiationTotal}>
+                    {formatCurrency(item.total, item.currency)}
+                  </Text>
+                ) : null}
                 <Text style={styles.negotiationDate}>
                   {item.createdAt ? new Date(item.createdAt).toLocaleDateString('pt-BR') : '—'}
                 </Text>
@@ -352,6 +366,7 @@ const styles = StyleSheet.create({
   negotiationHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   negotiationTitle: { color: colors.text, fontWeight: '900', fontSize: 15, flex: 1 },
   negotiationMeta: { color: colors.textSecondary, fontSize: 14, marginBottom: 4 },
+  negotiationTotal: { color: colors.primary, fontSize: 15, fontWeight: '900', marginBottom: 4 },
   negotiationDate: { color: colors.muted, fontSize: 12, marginBottom: 10 },
   negBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
   negBadgeText: { fontSize: 11, fontWeight: '800' },

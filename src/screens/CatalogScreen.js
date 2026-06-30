@@ -15,7 +15,7 @@ const FUELS = ['Todos', 'Gasolina', 'Flex', 'Diesel'];
 const TRANSMISSIONS = ['Todos', 'Automático', 'Manual', 'CVT', 'DSG'];
 const MAX_HISTORY = 5;
 
-export default function CatalogScreen({ navigation, vehicles, favorites, toggleFavorite}) {
+export default function CatalogScreen({ navigation, vehicles, favorites, toggleFavorite, refreshVehicles, loadingVehicles = false, usingLocalVehicles = false }) {
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchHistory, setSearchHistory] = useState(['BMW', 'SUV 2022', 'Toyota automático']);
@@ -33,11 +33,16 @@ export default function CatalogScreen({ navigation, vehicles, favorites, toggleF
     filters.fuel !== 'Todos' ? filters.fuel : null, filters.transmission !== 'Todos' ? filters.transmission : null,
   ].filter(Boolean).length;
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     setLoading(true);
-    setTimeout(() => { setRefreshing(false); setLoading(false); }, 1200);
-  }, []);
+    try {
+      await refreshVehicles?.();
+    } finally {
+      setRefreshing(false);
+      setLoading(false);
+    }
+  }, [refreshVehicles]);
 
   function handleSearch(text) {
     setSearch(text);
@@ -111,7 +116,9 @@ export default function CatalogScreen({ navigation, vehicles, favorites, toggleF
         <View style={styles.titleRow}>
           <View>
             <Text style={[styles.title, { color: colors.text }]}>Catálogo</Text>
-            <Text style={[styles.subtitle, { color: colors.muted }]}>{filtered.length} veículos</Text>
+            <Text style={[styles.subtitle, { color: colors.muted }]}>
+              {filtered.length} veículos{usingLocalVehicles ? ' - dados locais' : ''}
+            </Text>
           </View>
           <View style={styles.headerActions}>
             <TouchableOpacity
@@ -231,7 +238,7 @@ export default function CatalogScreen({ navigation, vehicles, favorites, toggleF
       </View>
 
       {/* Lista com skeleton */}
-      {loading ? (
+      {(loading || loadingVehicles) && vehicles.length === 0 ? (
         <ScrollView contentContainerStyle={styles.list}>
           {[1, 2, 3].map((i) => <SkeletonCard key={i} colors={colors} />)}
         </ScrollView>

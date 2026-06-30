@@ -7,6 +7,13 @@ import FadeInView from '../components/FadeInView';
 import { colors } from '../theme/colors';
 import { formatCurrency } from '../utils/formatCurrency';
 
+function getOrderStatus(order) {
+  if (order.status === 'LOCAL') return { label: 'Salvo localmente', color: colors.info };
+  if (order.status === 'CREATED') return { label: 'Aguardando', color: colors.primary };
+  if (order.status === 'CLOSED') return { label: 'Finalizado', color: colors.success };
+  return { label: order.status || 'Aguardando', color: colors.primary };
+}
+
 export default function HistoryScreen({ navigation, orders = [], testDrives = [] }) {
   const [tab, setTab] = useState('orders');
 
@@ -45,29 +52,36 @@ export default function HistoryScreen({ navigation, orders = [], testDrives = []
           renderItem={({ item, index }) => (
             <FadeInView delay={index * 60}>
               <View style={[styles.orderCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                {(() => {
+                  const status = getOrderStatus(item);
+                  return (
+                    <>
                 <View style={styles.orderHeader}>
                   <View style={styles.orderIdRow}>
                     <Ionicons name="receipt-outline" size={18} color={colors.primary} />
                     <Text style={[styles.orderId, { color: colors.text }]}>Pedido #{item.id}</Text>
                   </View>
-                  <View style={[styles.statusBadge, { backgroundColor: 'rgba(201,162,39,0.1)', borderColor: 'rgba(201,162,39,0.3)' }]}>
-                    <View style={[styles.statusDot, { backgroundColor: colors.primary }]} />
-                    <Text style={[styles.statusText, { color: colors.primary }]}>Aguardando</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: `${status.color}18`, borderColor: `${status.color}40` }]}>
+                    <View style={[styles.statusDot, { backgroundColor: status.color }]} />
+                    <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
                   </View>
                 </View>
+                    </>
+                  );
+                })()}
                 <Text style={[styles.orderDate, { color: colors.muted }]}>📅 {item.date}</Text>
                 <View style={[styles.itemsList, { borderTopColor: colors.border }]}>
                   {item.items.map((vehicle) => (
                     <View key={vehicle.id} style={styles.vehicleRow}>
                       <Ionicons name="car-outline" size={14} color={colors.muted} />
                       <Text style={[styles.vehicleName, { color: colors.textSecondary }]}>{vehicle.name}</Text>
-                      <Text style={[styles.vehiclePrice, { color: colors.muted }]}>{formatCurrency(vehicle.price)}</Text>
+                      <Text style={[styles.vehiclePrice, { color: colors.muted }]}>{formatCurrency(vehicle.price, vehicle.currency || item.currency)}</Text>
                     </View>
                   ))}
                 </View>
                 <View style={[styles.orderFooter, { borderTopColor: colors.border }]}>
                   <Text style={[styles.totalLabel, { color: colors.muted }]}>Total estimado</Text>
-                  <Text style={[styles.total, { color: colors.primary }]}>{formatCurrency(item.total)}</Text>
+                  <Text style={[styles.total, { color: colors.primary }]}>{formatCurrency(item.total, item.currency)}</Text>
                 </View>
               </View>
             </FadeInView>

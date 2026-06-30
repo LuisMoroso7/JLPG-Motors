@@ -37,7 +37,7 @@ export default function VehicleCard({ vehicle, onPress, onFavorite, isFavorite, 
         )}
         <View style={styles.compactContent}>
           <Text style={styles.compactName} numberOfLines={1}>{vehicle.name}</Text>
-          <Text style={styles.compactPrice}>{formatCurrency(vehicle.price)}</Text>
+          <Text style={styles.compactPrice}>{formatCurrency(vehicle.price, vehicle.targetCurrency || 'BRL')}</Text>
         </View>
       </Pressable>
     );
@@ -96,7 +96,7 @@ export default function VehicleCard({ vehicle, onPress, onFavorite, isFavorite, 
           <View style={styles.metaDot} />
           <View style={styles.metaItem}>
             <Ionicons name="speedometer-outline" size={13} color={colors.muted} />
-            <Text style={styles.metaText}>{vehicle.km.toLocaleString('pt-BR')} km</Text>
+            <Text style={styles.metaText}>{Number(vehicle.km || 0).toLocaleString('pt-BR')} km</Text>
           </View>
           <View style={styles.metaDot} />
           <View style={styles.metaItem}>
@@ -105,7 +105,7 @@ export default function VehicleCard({ vehicle, onPress, onFavorite, isFavorite, 
           </View>
         </View>
         <View style={styles.footer}>
-          <Text style={styles.price}>{formatCurrency(vehicle.price)}</Text>
+          <Text style={styles.price}>{formatCurrency(vehicle.price, vehicle.targetCurrency || 'BRL')}</Text>
           <View style={styles.detailsBtn}>
             <Text style={styles.detailsBtnText}>Ver detalhes</Text>
             <Ionicons name="arrow-forward" size={14} color={colors.primary} />

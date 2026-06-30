@@ -15,11 +15,12 @@ const CATEGORY_ICONS = {
   'Picape': 'construct-outline', 'Hatch Premium': 'flash-outline',
 };
 
-export default function HomeScreen({ navigation, vehicles, favorites, toggleFavorite, user, recentlyViewed = []}) {
-  const highlights = vehicles.filter((v) => v.featured).slice(0, 3);
+export default function HomeScreen({ navigation, vehicles, favorites, toggleFavorite, user, recentlyViewed = [], orders = [], priceAlerts = [], backendMessage, backendOnline = false }) {
+  const featuredVehicles = vehicles.filter((v) => v.featured);
+  const highlights = (featuredVehicles.length > 0 ? featuredVehicles : vehicles).slice(0, 3);
   const totalVehicles = vehicles.length;
-  const avgPrice = vehicles.reduce((s, v) => s + v.price, 0) / totalVehicles;
-  const unreadNotifs = 2;
+  const avgPrice = totalVehicles > 0 ? vehicles.reduce((s, v) => s + v.price, 0) / totalVehicles : 0;
+  const unreadNotifs = orders.filter((order) => order.status === 'CREATED' || order.status === 'LOCAL').length + priceAlerts.length;
 
   return (
     <Screen>
@@ -29,7 +30,9 @@ export default function HomeScreen({ navigation, vehicles, favorites, toggleFavo
         <View style={styles.topBar}>
           <View>
             <Text style={styles.greetingHello}>Olá, {user?.name?.split(' ')[0] || 'Cliente'} 👋</Text>
-            <Text style={styles.greetingSub}>Bem-vindo à JLPG Motors</Text>
+            <Text style={styles.greetingSub}>
+              {backendOnline ? (backendMessage || 'Bem-vindo à JLPG Motors') : 'Dados locais carregados'}
+            </Text>
           </View>
           <View style={styles.topActions}>
             <TouchableOpacity style={styles.topBtn} onPress={() => navigation.navigate('Loja')}>
@@ -134,7 +137,7 @@ export default function HomeScreen({ navigation, vehicles, favorites, toggleFavo
                   <LinearGradient colors={['transparent', 'rgba(10,10,15,0.9)']} style={styles.recentGradient} />
                   <View style={styles.recentInfo}>
                     <Text style={styles.recentName} numberOfLines={1}>{vehicle.name}</Text>
-                    <Text style={styles.recentPrice}>{formatCurrency(vehicle.price)}</Text>
+                    <Text style={styles.recentPrice}>{formatCurrency(vehicle.price, vehicle.targetCurrency || 'BRL')}</Text>
                   </View>
                 </TouchableOpacity>
               ))}

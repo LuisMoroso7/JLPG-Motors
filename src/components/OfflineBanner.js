@@ -1,29 +1,22 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function OfflineBanner() {
-  const [isOffline, setIsOffline] = useState(false);
-  const translateY = useRef(new Animated.Value(-60)).current;
-
-  useEffect(() => {
-    // Simula detecção de rede — em produção usar @react-native-community/netinfo
-    // Aqui deixamos como false (online) por padrão
-    setIsOffline(false);
-  }, []);
+export default function OfflineBanner({ visible = false, message = 'Backend indisponivel - usando dados locais' }) {
+  const translateY = useRef(new Animated.Value(-70)).current;
 
   useEffect(() => {
     Animated.timing(translateY, {
-      toValue: isOffline ? 0 : -60,
+      toValue: visible ? 0 : -70,
       duration: 300,
       useNativeDriver: true,
     }).start();
-  }, [isOffline]);
+  }, [visible, translateY]);
 
   return (
     <Animated.View style={[styles.banner, { transform: [{ translateY }] }]}>
       <Ionicons name="cloud-offline-outline" size={16} color="#fff" />
-      <Text style={styles.text}>Sem conexão — usando dados em cache</Text>
+      <Text style={styles.text}>{message}</Text>
     </Animated.View>
   );
 }

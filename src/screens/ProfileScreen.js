@@ -34,7 +34,7 @@ function MenuItem({ icon, label, onPress, danger = false, right }) {
   );
 }
 
-export default function ProfileScreen({ user, setUser, logout, orders, favorites, priceAlerts = [] }) {
+export default function ProfileScreen({ user, setUser, logout, orders, favorites, priceAlerts = [], removePriceAlert }) {
   const [avatar, setAvatar] = useState(null);
 
   async function pickAvatar() {
@@ -132,11 +132,14 @@ export default function ProfileScreen({ user, setUser, logout, orders, favorites
                       <Ionicons name="notifications-outline" size={16} color={colors.primary} />
                       <View style={styles.alertInfo}>
                         <Text style={styles.alertName} numberOfLines={1}>{alert.vehicleName}</Text>
-                        <Text style={styles.alertPrice}>Alerta em {formatCurrency(alert.targetPrice)}</Text>
+                        <Text style={styles.alertPrice}>Alerta em {formatCurrency(alert.targetPrice, alert.currency || 'BRL')}</Text>
                       </View>
                       <View style={styles.alertActiveBadge}>
                         <Text style={styles.alertActiveText}>Ativo</Text>
                       </View>
+                      <TouchableOpacity onPress={() => removePriceAlert?.(alert.id)} style={styles.alertRemoveBtn}>
+                        <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                      </TouchableOpacity>
                     </View>
                     {i < priceAlerts.length - 1 && <View style={styles.separator} />}
                   </View>
@@ -211,6 +214,7 @@ const styles = StyleSheet.create({
   alertPrice: { color: colors.muted, fontSize: 12, marginTop: 2 },
   alertActiveBadge: { backgroundColor: 'rgba(61,220,132,0.1)', borderWidth: 1, borderColor: 'rgba(61,220,132,0.3)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   alertActiveText: { color: colors.success, fontSize: 11, fontWeight: '700' },
+  alertRemoveBtn: { padding: 6, marginRight: -4 },
   menuItem: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
   menuIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   menuLabel: { flex: 1, color: colors.text, fontWeight: '700', fontSize: 14 },

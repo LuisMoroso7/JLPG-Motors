@@ -1,10 +1,16 @@
-export function formatCurrency(value) {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+export function formatCurrency(value, currency = 'BRL') {
+  const safeValue = Number(value) || 0;
+
+  try {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(safeValue);
+  } catch (e) {
+    return `${currency} ${safeValue.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`;
+  }
 }
 
 export function calcFinancing({ price, downPayment, months, rate = 1.49 }) {

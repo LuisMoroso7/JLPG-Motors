@@ -28,7 +28,7 @@ export default function ChatScreen({ route, navigation, user, vehicles = [] }) {
     {
       id: '1',
       text: vehicle
-        ? `Olá! Tenho interesse no ${vehicle.name} (${formatCurrency(vehicle?.price)}). Pode me ajudar?`
+        ? `Olá! Tenho interesse no ${vehicle.name} (${formatCurrency(vehicle?.price, vehicle?.targetCurrency || 'BRL')}). Pode me ajudar?`
         : 'Olá! Gostaria de informações sobre os veículos disponíveis.',
       sender: 'user', time: new Date(Date.now() - 30000), status: 'read',
     },
@@ -87,7 +87,7 @@ export default function ChatScreen({ route, navigation, user, vehicles = [] }) {
           model: 'claude-sonnet-4-6',
           max_tokens: 150,
           system: SYSTEM_PROMPT + (vehicle
-            ? `\n\nVeículo em negociação: ${vehicle.name}, Ano: ${vehicle.year}, KM: ${vehicle.km?.toLocaleString('pt-BR')}, Preço: ${formatCurrency(vehicle.price)}.`
+            ? `\n\nVeículo em negociação: ${vehicle.name}, Ano: ${vehicle.year}, KM: ${vehicle.km?.toLocaleString('pt-BR')}, Preço: ${formatCurrency(vehicle.price, vehicle.targetCurrency || 'BRL')}.`
             : ''),
           messages: history,
         }),
@@ -179,7 +179,7 @@ export default function ChatScreen({ route, navigation, user, vehicles = [] }) {
           <Ionicons name="car-outline" size={14} color={colors.primary} />
           <Text style={[styles.vehicleBannerText, { color: colors.muted }]} numberOfLines={1}>
             <Text style={{ color: colors.primary, fontWeight: '800' }}>{vehicle.name}</Text>
-            {' '}— {formatCurrency(vehicle.price)}
+            {' '}— {formatCurrency(vehicle.price, vehicle.targetCurrency || 'BRL')}
           </Text>
         </View>
       )}

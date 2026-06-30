@@ -8,7 +8,7 @@ import { colors } from '../theme/colors';
 import { formatCurrency } from '../utils/formatCurrency';
 
 const SPECS = [
-  { key: 'price', label: 'Preço', format: (v) => formatCurrency(v), better: 'lower' },
+  { key: 'price', label: 'Preço', format: (v, vehicle) => formatCurrency(v, vehicle.targetCurrency || 'BRL'), better: 'lower' },
   { key: 'year', label: 'Ano', format: (v) => String(v), better: 'higher' },
   { key: 'km', label: 'Quilometragem', format: (v) => `${Number(v).toLocaleString('pt-BR')} km`, better: 'lower' },
   { key: 'transmission', label: 'Câmbio', format: (v) => v, better: null },
@@ -124,7 +124,7 @@ export default function CompareScreen({ navigation, vehicles = [], compareVehicl
                 )}
                 <View style={styles.vehicleChipInfo}>
                   <Text style={[styles.vehicleChipName, { color: colors.text }]} numberOfLines={2}>{item.name}</Text>
-                  <Text style={[styles.vehicleChipPrice, { color: colors.primary }]}>{formatCurrency(item.price)}</Text>
+                  <Text style={[styles.vehicleChipPrice, { color: colors.primary }]}>{formatCurrency(item.price, item.targetCurrency || 'BRL')}</Text>
                 </View>
               </TouchableOpacity>
             );
@@ -162,7 +162,7 @@ export default function CompareScreen({ navigation, vehicles = [], compareVehicl
               <LinearGradient colors={['transparent', 'rgba(10,10,15,0.85)']} style={StyleSheet.absoluteFill} />
               <View style={styles.vehicleHeaderInfo}>
                 <Text style={styles.vehicleHeaderName} numberOfLines={2}>{v.name}</Text>
-                <Text style={styles.vehicleHeaderPrice}>{formatCurrency(v.price)}</Text>
+                <Text style={styles.vehicleHeaderPrice}>{formatCurrency(v.price, v.targetCurrency || 'BRL')}</Text>
               </View>
             </View>
           ))}
@@ -179,7 +179,7 @@ export default function CompareScreen({ navigation, vehicles = [], compareVehicl
               <View key={spec.key} style={[styles.row, i % 2 === 0 && { backgroundColor: 'rgba(255,255,255,0.02)' }]}>
                 <View style={[styles.cell, aWins && styles.cellWin]}>
                   <Text style={[styles.cellValue, { color: aWins ? colors.success : colors.textSecondary }]}>
-                    {spec.format(valA)}
+                    {spec.format(valA, a)}
                   </Text>
                   {aWins && <Ionicons name="trending-up" size={11} color={colors.success} />}
                 </View>
@@ -188,7 +188,7 @@ export default function CompareScreen({ navigation, vehicles = [], compareVehicl
                 </View>
                 <View style={[styles.cell, bWins && styles.cellWin]}>
                   <Text style={[styles.cellValue, { color: bWins ? colors.success : colors.textSecondary }]}>
-                    {spec.format(valB)}
+                    {spec.format(valB, b)}
                   </Text>
                   {bWins && <Ionicons name="trending-up" size={11} color={colors.success} />}
                 </View>
